@@ -4,7 +4,7 @@
   "private": true,
   "description": "StepFun/ZCode token 速率监视器 — Electron 桌面客户端(独立可选分发物,不进插件市场)",
   "author": "Neriah-Ado",
-  "license": "MIT",
+  "license": "AGPL-3.0-only",
   "type": "module",
   "main": "electron/main.mjs",
   "scripts": {

@@ -2,7 +2,7 @@
 
 # stepfun-usage-monitor — ZCode Token Rate Monitor (zcode-tps-monitor)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 ![Node](https://img.shields.io/badge/node-%E2%89%A5%2022.5-brightgreen)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue)
 ![Tests](https://img.shields.io/badge/tests-88%20pass-brightgreen)
@@ -517,4 +517,4 @@ A: In the dashboard's "⚙ Appearance" drawer, drag "glass intensity" to 0 to re
 
 ## License
 
-[MIT](LICENSE) © 2026 shy3130 (upstream author) · V2.1.0 appearance & liquid glass, V2.2.0 performance, V2.3.0 Electron desktop client, V2.4.0 multi-agent Provider data layer, V2.5.0 multi-agent aggregation display: Neriah-Ado
+[AGPL-3.0-only](LICENSE) · upstream MIT text and copyright notice retained in [LICENSE-MIT](LICENSE-MIT), copyright © 2026 shy3130 (upstream author) · V2.1.0 appearance & liquid glass, V2.2.0 performance, V2.3.0 Electron desktop client, V2.4.0 multi-agent Provider data layer, V2.5.0 multi-agent aggregation display: Neriah-Ado

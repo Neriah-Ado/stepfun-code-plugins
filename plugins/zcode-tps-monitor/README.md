@@ -173,4 +173,4 @@ zcode-tps-monitor/
 
 ## License
 
-[MIT](../../LICENSE)
+[AGPL-3.0-only](../../LICENSE) · 上游 MIT 文本见 [LICENSE-MIT](../../LICENSE-MIT)

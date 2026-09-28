@@ -2,7 +2,7 @@
 
 # stepfun-usage-monitor — ZCode Token 速率监控（zcode-tps-monitor）
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)](LICENSE)
 ![Node](https://img.shields.io/badge/node-%E2%89%A5%2022.5-brightgreen)
 ![Platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-blue)
 ![Tests](https://img.shields.io/badge/tests-88%20pass-brightgreen)
@@ -510,4 +510,4 @@ A：大屏右上角「⚙ 外观」抽屉里把「玻璃强度」拖到 0 即恢
 
 ## License
 
-[MIT](LICENSE) © 2026 shy3130（上游作者）· V2.1.0 外观与液态玻璃、V2.2.0 性能优化、V2.3.0 Electron 桌面客户端、V2.4.0 多 agent Provider 数据层、V2.5.0 多 agent 聚合展示：Neriah-Ado
+[AGPL-3.0-only](LICENSE) · 上游 MIT 文本与版权声明保留在 [LICENSE-MIT](LICENSE-MIT)，版权人 © 2026 shy3130（上游作者）· V2.1.0 外观与液态玻璃、V2.2.0 性能优化、V2.3.0 Electron 桌面客户端、V2.4.0 多 agent Provider 数据层、V2.5.0 多 agent 聚合展示：Neriah-Ado

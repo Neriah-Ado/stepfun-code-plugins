@@ -89,7 +89,6 @@ stamp 归档的自动写入与 `recall_by_stamp` 工具注册。两者共享同�
   `skills/context-archive/SKILL.md` 技能提示词）：随本集合以 [AGPL-3.0-only](../../LICENSE) 分发。
 - **参考实现**（TypeScript 代码版）：
   [uos1231234/step-context-archive](https://github.com/uos1231234/step-context-archive)，
-  属独立项目，采用其自身许可
-  [agent-shell License v1.0](https://github.com/uos1231234/step-context-archive/blob/main/LICENSE)
-  —— **并非 MIT**（源自 PolyForm Small Business License 1.0.0，另加商用条款；超出小型企业
-  规模的公司商用需单独取得商务许可）。本 PR **不包含**其任何代码或文本。
+  属独立项目，同样以
+  [AGPL-3.0-only](https://github.com/uos1231234/step-context-archive/blob/main/LICENSE) 授权
+  （已于 `0e0ce9f` 切至 AGPL-3.0-only，与本集合口径一致）。本 PR **不包含**其任何代码或文本。

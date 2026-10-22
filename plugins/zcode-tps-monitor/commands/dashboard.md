@@ -8,7 +8,7 @@ description: 打开 TPS 实时监控大屏(浏览器页面,每秒自动刷新)
 
 1. 先探测服务是否已在运行:`curl -s -m 2 http://127.0.0.1:7423/api/metrics`。
 2. 若未运行,后台启动(不要阻塞会话):
-   ```
+   ```bash
    nohup node "<插件目录>/dashboard/server.mjs" >/dev/null 2>&1 &
    ```
    插件目录 = 本插件安装位置(技能 base directory 的上两级);端口默认 7423,可用 `--port N` 调整。

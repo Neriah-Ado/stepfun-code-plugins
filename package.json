@@ -2,7 +2,7 @@
   "name": "zcode-tps-monitor-desktop",
   "version": "2.5.0",
   "private": true,
-  "description": "StepFun/ZCode token 速率监视器 — Electron 桌面客户端(独立可选分发物,不进插件市场)",
+  "description": "ZCode 会话级 Token 速率监控插件 —— Electron 桌面客户端：主窗口、悬浮条、托盘与自动更新（独立分发物，不进插件市场）",
   "author": "Neriah-Ado",
   "license": "AGPL-3.0-only",
   "type": "module",

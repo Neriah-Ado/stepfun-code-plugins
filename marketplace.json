@@ -1,6 +1,6 @@
 {
   "name": "tps-local-marketplace",
-  "description": "本地插件市场:自建 ZCode 插件(吞吐监控等)。",
+  "description": "本地插件市场：收录 ZCode 会话级 Token 速率监控插件（本轮真实 tok/s、实时大屏、/tps 命令与 MCP 工具）。",
   "owner": {
     "name": "Administrator"
   },
@@ -8,7 +8,7 @@
     {
       "name": "zcode-tps-monitor",
       "source": "./plugins/zcode-tps-monitor",
-      "description": "TPS 吞吐监控:每轮回复结束显示本轮即时速率 + 实时监控大屏 + /tps 命令 + MCP 工具;支持配置真实指标接口或使用演示数据。",
+      "description": "ZCode 会话级 Token 速率监控插件 —— 每轮回复结束的瞬间自动显示本轮即时 tok/s；附实时监控大屏、/tps 命令与 MCP 工具，可选业务 TPS 监控（真实指标接口或演示数据）。",
       "version": "2.5.0",
       "author": {
         "name": "Administrator"

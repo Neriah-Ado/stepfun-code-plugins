@@ -13,14 +13,14 @@ description: Token 输出速率与吞吐监控。当用户询问 token 速率、
 ## 取数方式
 
 1. Token 速率(推荐,真实数据):
-   ```
+   ```bash
    node <插件目录>/scripts/token-rate.mjs           # 人类可读
    node <插件目录>/scripts/token-rate.mjs --json    # JSON
    ```
    可设 `ZCODE_SESSION_ID` 环境变量只统计当前会话;钩子已自动这么做。
 2. 业务 TPS:MCP 工具 `tps_snapshot`/`tps_watch`,或 `node <插件目录>/scripts/collect.mjs [--watch N]`。
 3. 实时大屏(浏览器,含 token 速率面板):
-   ```
+   ```bash
    node <插件目录>/dashboard/server.mjs   # http://127.0.0.1:7423
    ```
 

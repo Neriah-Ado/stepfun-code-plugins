@@ -129,7 +129,7 @@ printf '%s\n' \
 ```
 ## 目录结构
 
-```
+```text
 zcode-tps-monitor/
 ├── .zcode-plugin/plugin.json   # 插件清单(name / userConfig)
 ├── .claude-plugin/plugin.json  # 兼容清单
@@ -172,6 +172,6 @@ zcode-tps-monitor/
 
 在 **设置 → 插件管理** 中重新安装/刷新插件,并重开会话使钩子重新注册。要求 Node ≥ 22.5(需内置 `node:sqlite`)。
 
-## License
+## 许可证
 
 [AGPL-3.0-only](../../LICENSE) · 上游 MIT 文本见 [LICENSE-MIT](../../LICENSE-MIT)

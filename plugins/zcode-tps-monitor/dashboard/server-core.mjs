@@ -89,6 +89,34 @@ function sendJson(res, status, obj) {
   res.end(JSON.stringify(obj));
 }
 
+// ---------- 本机来源校验(B-01) ----------
+// 服务只监听回环地址,但浏览器里的任意网页仍可跨站发“简单请求”写配置。
+// 因此对每个请求做三件事,均为纯增量防护,不改变同源页面行为:
+//   1. Host 必须是回环主机名(防 DNS rebinding 把恶意域名解析到 127.0.0.1);
+//   2. 带 Origin 的请求必须与本服务同源(协议 http/https、主机在白名单、端口一致);
+//   3. POST 只接受 application/json(CORS 简单请求无法带这个 Content-Type,挡住表单/纯文本跨站写入)。
+// 无 Origin 的请求放行:本机脚本、CLI、测试以及浏览器同源 GET/SSE 都可能不带 Origin。
+const LOOPBACK_HOSTNAMES = new Set(["127.0.0.1", "localhost", "::1"]);
+
+// 解析 Host/Origin 的 authority 部分,统一 IPv6 方括号与端口缺省值
+function parseAuthority(value) {
+  if (typeof value !== "string" || !value) return null;
+  let url;
+  try {
+    url = new URL(`http://${value}`);
+  } catch {
+    return null;
+  }
+  return {
+    hostname: url.hostname.replace(/^\[|\]$/g, ""),
+    port: url.port || "80",
+  };
+}
+
+function isJsonContentType(value) {
+  return typeof value === "string" && value.split(";")[0].trim().toLowerCase() === "application/json";
+}
+
 function readBody(req, limit = 65536) {
   return new Promise((resolve, reject) => {
     let size = 0;
@@ -119,6 +147,37 @@ export function createDashboardServer(opts = {}) {
   let listening = false;
 
   let lastRequestAt = Date.now();
+
+  // Host/Origin 白名单:回环主机 + 显式配置的监听主机(默认只有回环)
+  const allowedHostnames = new Set(LOOPBACK_HOSTNAMES);
+  const configuredHostname = parseAuthority(host)?.hostname;
+  if (configuredHostname) allowedHostnames.add(configuredHostname);
+
+  function listeningPort() {
+    const address = server.address();
+    return address ? String(address.port) : "";
+  }
+
+  function hostAllowed(req) {
+    const parsed = parseAuthority(req.headers.host);
+    return Boolean(parsed && allowedHostnames.has(parsed.hostname));
+  }
+
+  function originAllowed(req) {
+    const origin = req.headers.origin;
+    if (origin === undefined) return true; // 本机脚本 / CLI / 同源 GET、SSE
+    if (origin === "null") return false;   // 沙箱 iframe、data: 页面
+    let url;
+    try {
+      url = new URL(origin);
+    } catch {
+      return false;
+    }
+    if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+    if (!allowedHostnames.has(url.hostname.replace(/^\[|\]$/g, ""))) return false;
+    const port = url.port || (url.protocol === "https:" ? "443" : "80");
+    return port === listeningPort();
+  }
 
   // ---------- SSE 增量推送(/api/events):纯 node:http,零依赖 ----------
   // 单一采集 tick 服务所有连接:每 1s 读一次 usage 库,出现新样本才推 token /
@@ -311,6 +370,16 @@ export function createDashboardServer(opts = {}) {
 
   const server = http.createServer(async (req, res) => {
     lastRequestAt = Date.now();
+    // B-01:来源校验先于一切路由,跨站请求一律 403
+    if (!hostAllowed(req) || !originAllowed(req)) {
+      sendJson(res, 403, { error: "仅接受本机同源请求" });
+      return;
+    }
+    // B-01:POST 只收 JSON(CORS 简单请求带不了这个 Content-Type)
+    if (req.method === "POST" && !isJsonContentType(req.headers["content-type"])) {
+      sendJson(res, 415, { error: "POST 仅接受 Content-Type: application/json" });
+      return;
+    }
     if (req.url === "/" || req.url.startsWith("/index")) {
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" });
       res.end(renderIndex());

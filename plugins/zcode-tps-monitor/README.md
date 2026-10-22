@@ -85,6 +85,7 @@ node scripts/token-rate.mjs --session <id>        # 只看指定会话(优先于
 
 - 读写共用 `scripts/lib/config.mjs`(零依赖):数值越界夹紧,非法值整条拒绝且不落盘,损坏 JSON 抛修复提示。
 - HTTP 接口:`GET /api/config`(当前外观 + 配置路径)、`POST /api/config`(`{"appearance": {…}}` 合并写入,非法字段 400 + `fieldErrors`)。
+- 来源校验(仅本机):服务只接受 `Host` 为 `127.0.0.1` / `localhost` / `::1` 的请求,带 `Origin` 时必须与监听地址同源,否则 `403`;`POST` 只接受 `Content-Type: application/json`(否则 `415`)。无 `Origin` 的本机脚本、CLI 与同源页面不受影响。
 - 大屏页内「⚙ 外观」抽屉可可视化管理同一配置;doctor 新增外观配置自检项。
 
 ## 实时推送与性能

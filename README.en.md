@@ -17,7 +17,7 @@
 | V2.4.0 | **Multi-agent data layer** — Claude Code / Codex / OpenCode / Cline aggregated behind one unified Provider interface |
 | V2.5.0 | **Multi-agent aggregation display** — dashboard switcher bar / grouped cards / same-axis comparison curves / session focus, overlay `focusAgent` (still ZCode-only by default; new UI appears only with multiple sources) |
 
-> **Upgrading from v1.x**: v1.x (≤ 1.5.11) counted API usage through a local reverse proxy (`127.0.0.1:8787`) and required pointing your client's Base URL at it. Since V2.0.0 the plugin reads ZCode's own usage database directly — **no client configuration changes, install and go**. The v1.x code remains in git history (tag `v1.5.10`).
+> **Upgrading from v1.x**: v1.x (≤ 1.5.11) counted API usage through a local reverse proxy (`127.0.0.1:8787`) and required pointing your client's Base URL at it. Since V2.0.0 the plugin reads ZCode's own usage database directly — **no client configuration changes, install and go**. The v1.x code remains in git history (tag `v1.5.10`). Users still on v1.x should upgrade and delete the old `~/.stepfun-usage-monitor/providers.json`, which stores API keys in plaintext.
 
 > **[中文 README](README.md)** · This is the English version · Plugin internals & development notes: [plugins/zcode-tps-monitor/README.md](plugins/zcode-tps-monitor/README.md) · Bilingual release notes per version: [docs/releases/](docs/releases/)
 

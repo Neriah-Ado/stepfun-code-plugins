@@ -17,7 +17,7 @@
 | V2.4.0 | **多 agent 数据层**——Claude Code / Codex / OpenCode / Cline 经统一 Provider 接口接入聚合 |
 | V2.5.0 | **多 agent 聚合展示**——大屏切换条 / 分组卡片 / 同轴对比曲线 / 会话聚焦，悬浮条 `focusAgent`（默认仍只读 ZCode，新 UI 仅在多源时出现） |
 
-> **从 v1.x 升级**：v1.x（≤ 1.5.11）通过本地反向代理（`127.0.0.1:8787`）统计 API 用量，需改客户端 Base URL。V2.0.0 起直读 ZCode 自身 usage 数据库——**无需改任何客户端配置，装上即用**。v1.x 代码在 git 历史中（tag `v1.5.10`）。
+> **从 v1.x 升级**：v1.x（≤ 1.5.11）通过本地反向代理（`127.0.0.1:8787`）统计 API 用量，需改客户端 Base URL。V2.0.0 起直读 ZCode 自身 usage 数据库——**无需改任何客户端配置，装上即用**。v1.x 代码在 git 历史中（tag `v1.5.10`）。仍停留在 v1.x 的用户建议尽快升级，并删除旧的 `~/.stepfun-usage-monitor/providers.json`——该文件以明文保存 API key。
 
 > **[English README](README.en.md)** · 本文档为中文版 · 插件内部结构与开发说明见 [plugins/zcode-tps-monitor/README.md](plugins/zcode-tps-monitor/README.md) · 各版本双语 Release Notes 见 [docs/releases/](docs/releases/)
 

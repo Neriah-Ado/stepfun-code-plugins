@@ -3,28 +3,38 @@ name: Release
 # 三平台桌面客户端打包(V2.3.0 Electron 客户端)。
 # 推 v* 标签时构建并发布到 GitHub Releases(electron-updater 据此自动更新);
 # 也可在 Actions 页手动触发,只出产物不发布(--publish never 由 workflow_dispatch 分支决定)。
+#
+# 供应链约束(安全审计 B-06 / B-05):
+#   - 权限最小化:workflow 级只有 contents: read,仅 build job 提升到 contents: write;
+#   - 所有 Action 固定到 40 位 commit SHA(注释里保留人类可读的 tag),tag 被移动不会改变行为;
+#   - 依赖按 package-lock.json 安装(npm ci),发布前对生产依赖跑 npm audit。
 on:
   push:
     tags: ["v*"]
   workflow_dispatch:
 
 permissions:
-  contents: write # 创建 Release / 上传产物
+  contents: read # 默认只读;发布权限在 build job 内单独提升
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
-      - run: npm install
+      # 按 lockfile 安装,构建可复现;生产依赖出现 high 及以上 advisory 时直接失败
+      - run: npm ci
+      - run: npm audit --omit=dev --audit-level=high
       # 插件核心零依赖不变 + 纯逻辑回归:打包前先跑全量单测
       - run: node --test
 
   build:
     needs: test
+    # 只有真正创建 Release / 上传产物的 job 需要写权限
+    permissions:
+      contents: write # 创建 Release / 上传产物
     strategy:
       fail-fast: false
       matrix:
@@ -40,11 +50,11 @@ jobs:
             args: --linux AppImage --x64 --arm64
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version: 22
-      - run: npm install
+      - run: npm ci
       # 图标由纯 Node 生成并提交进仓库;这里重跑一次保证与 assets/generate-icon.mjs 同步
       - run: npm run icons
       - name: 打包(${{ matrix.args }})
@@ -56,7 +66,7 @@ jobs:
           # electron-builder 会把空串当签名文件路径加载而报 "not a file"(V2.4.0 实测)。
           # 需要签名时在此显式加回 CSC_LINK / CSC_KEY_PASSWORD / APPLE_ID 等变量。
           CSC_IDENTITY_AUTO_DISCOVERY: false
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: desktop-${{ matrix.os }}
           path: |

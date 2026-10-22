@@ -2,6 +2,18 @@
 
 > 各版本的完整双语 Release Notes 见 [`docs/releases/`](docs/releases/)（中文 + English）。
 
+## 未发布（安全加固）
+
+安全审计的可自动修复项。B-03（`fontUrl` 协议收窄）与 B-04（Electron `sandbox` / `openExternal` 收紧）属行为变化，待用户确认后再实施。
+
+### 安全
+- **大屏服务来源校验（B-01）**：`dashboard/server-core.mjs` 校验 `Host`（仅回环主机名，防 DNS rebinding）与 `Origin`（必须同源），`POST /api/config` 强制 `Content-Type: application/json`；无 Origin 的本机脚本与同源页面行为不变。新增 `test/dashboard-security.test.mjs`（错误 Origin → 403）。
+- **发布流程权限下沉与 Action pin（B-06）**：workflow 级 `permissions: contents: read`，仅 build job 提升到 `contents: write`；所有 Action 固定到 40 位 commit SHA。
+- **依赖可复现（B-05）**：新增并提交 `package-lock.json`，CI 改用 `npm ci`，发布前对生产依赖执行 `npm audit --omit=dev --audit-level=high`。
+
+### 文档
+- **v1.x 升级提示（B-08）**：中英文 README 补充“建议升级并删除旧 `~/.stepfun-usage-monitor/providers.json`（明文保存 API key）”。
+
 ## v2.5.0（多 agent 聚合展示层：切换条 + 分组卡片 + 同轴对比 + 会话聚焦）
 
 目标：在 V2.4.0 数据层之上补齐**展示层**——大屏、Electron 悬浮条、托盘与 `/tps` 输出同时展示多个 agent,支持切换与对比。数据层除 `agentStatus` 补 `sessionList` 外不再改动;默认 `providers=["zcode"]` 时新 UI 元素一律不出现,输出与 V2.4.0 完全一致。

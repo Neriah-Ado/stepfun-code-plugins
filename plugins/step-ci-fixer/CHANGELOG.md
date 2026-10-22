@@ -4,6 +4,11 @@
 
 <!-- 版本节由 tests/bootstrap-changelog.mjs 从 git 历史自举生成 -->
 
+## [1.3.1] - 2026-10-22
+
+### Security
+- C-05：`runId`/`prNumber` 只接受正整数（`^[1-9]\d{0,19}$`），`--limit` 收敛到 1..100，`--workflow` 改用 `--workflow=<name>` 等号形式并拒绝控制符/前导 `-`，避免参数被 gh 当作选项（flag 混淆） (CF-131-1)
+
 ## [1.3.0] - 2026-09-27
 
 ### Added

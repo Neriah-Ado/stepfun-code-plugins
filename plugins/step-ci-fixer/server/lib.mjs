@@ -2,8 +2,21 @@
  * step-ci-fixer MCP server 核心逻辑（CF-100-1/3 + v1.1/v1.2 扩展）。
  * 包装 gh CLI；日志只取尾部（C5，默认 16KB 错误段）；凭据走 GITHUB_TOKEN（C4）。
  * 测试缝：GH_FIXER_FAKE 指向 fake-gh 脚本（node 执行）；GH_FIXER_BIN 覆盖 gh 路径。
+ * v1.3.1（C-05）：runId/prNumber 只接受正整数，--limit 收敛到 1..100，--workflow 用 `--opt=value` 形式
+ *                  并拒绝控制符/前导 `-`，杜绝参数被 gh 当作选项（flag 混淆）。
  */
 import { spawnSync } from 'node:child_process';
+
+const RUN_ID_RE = /^[1-9]\d{0,19}$/;
+const WORKFLOW_MAX_LEN = 128;
+const clampLimit = (limit, fallback = 10) => {
+  const n = Math.floor(Number(limit));
+  return Number.isFinite(n) ? Math.max(1, Math.min(n, 100)) : fallback;
+};
+const isSafeWorkflow = (workflow) =>
+  typeof workflow === 'string' && workflow.length > 0 && workflow.length <= WORKFLOW_MAX_LEN &&
+  !workflow.startsWith('-') && !/[\u0000-\u001f\u007f]/.test(workflow);
+const normalizeRunId = (runId) => RUN_ID_RE.test(String(runId)) ? String(runId) : null;
 
 export const GH_MISSING_GUIDANCE = [
   '未检测到 GitHub CLI（gh）。请安装并登录后重试：',
@@ -44,8 +57,11 @@ export function checkGh() {
 }
 
 export function listFailedRuns({ workflow, limit = 10 } = {}) {
-  const args = ['run', 'list', '--status', 'failure', '--limit', String(limit), '--json', 'databaseId,displayTitle,workflowName,headBranch,conclusion,createdAt'];
-  if (workflow) args.push('--workflow', workflow);
+  if (workflow !== undefined && workflow !== null && workflow !== '' && !isSafeWorkflow(workflow)) {
+    return { error: 'invalid-argument', reason: 'workflow 名称非法（拒绝前导 -、控制符或超长）' };
+  }
+  const args = ['run', 'list', '--status', 'failure', `--limit=${clampLimit(limit)}`, '--json', 'databaseId,displayTitle,workflowName,headBranch,conclusion,createdAt'];
+  if (workflow) args.push(`--workflow=${workflow}`);
   const r = runGh(args);
   if (r.missing) return { error: 'gh-missing', guidance: GH_MISSING_GUIDANCE };
   if (r.code !== 0) return { error: 'gh-failed', stderr: r.stderr.slice(0, 300) };
@@ -57,7 +73,7 @@ export function listFailedRuns({ workflow, limit = 10 } = {}) {
 }
 
 export function listWorkflows({ limit = 20 } = {}) {
-  const r = runGh(['run', 'list', '--limit', String(limit), '--json', 'workflowName,displayTitle,conclusion,status,createdAt']);
+  const r = runGh(['run', 'list', `--limit=${clampLimit(limit, 20)}`, '--json', 'workflowName,displayTitle,conclusion,status,createdAt']);
   if (r.missing) return { error: 'gh-missing', guidance: GH_MISSING_GUIDANCE };
   if (r.code !== 0) return { error: 'gh-failed', stderr: r.stderr.slice(0, 300) };
   try {
@@ -72,7 +88,9 @@ export function listWorkflows({ limit = 20 } = {}) {
 
 // C5：日志只保留尾部 maxBytes（默认 16KB）
 export function fetchRunLog(runId, { maxBytes = 16 * 1024 } = {}) {
-  const r = runGh(['run', 'view', String(runId), '--log']);
+  const id = normalizeRunId(runId);
+  if (!id) return { error: 'invalid-argument', reason: 'runId 必须是正整数' };
+  const r = runGh(['run', 'view', id, '--log']);
   if (r.missing) return { error: 'gh-missing', guidance: GH_MISSING_GUIDANCE };
   if (r.code !== 0) return { error: 'gh-failed', stderr: r.stderr.slice(0, 300) };
   const buf = Buffer.from(`${r.stdout}${r.stderr}`, 'utf8');
@@ -82,14 +100,18 @@ export function fetchRunLog(runId, { maxBytes = 16 * 1024 } = {}) {
 }
 
 export function rerunWorkflow(runId) {
-  const r = runGh(['run', 'rerun', String(runId)]);
+  const id = normalizeRunId(runId);
+  if (!id) return { error: 'invalid-argument', reason: 'runId 必须是正整数' };
+  const r = runGh(['run', 'rerun', id]);
   if (r.missing) return { error: 'gh-missing', guidance: GH_MISSING_GUIDANCE };
   if (r.code !== 0) return { error: 'gh-failed', stderr: r.stderr.slice(0, 300) };
   return { runId: Number(runId), rerun: true };
 }
 
 export function runStatus(runId) {
-  const r = runGh(['run', 'view', String(runId), '--json', 'status,conclusion,displayTitle']);
+  const id = normalizeRunId(runId);
+  if (!id) return { error: 'invalid-argument', reason: 'runId 必须是正整数' };
+  const r = runGh(['run', 'view', id, '--json', 'status,conclusion,displayTitle']);
   if (r.missing) return { error: 'gh-missing', guidance: GH_MISSING_GUIDANCE };
   if (r.code !== 0) return { error: 'gh-failed', stderr: r.stderr.slice(0, 300) };
   try {
@@ -100,7 +122,9 @@ export function runStatus(runId) {
 }
 
 export function fetchPrComments(prNumber, { maxBytes = 8 * 1024 } = {}) {
-  const r = runGh(['pr', 'view', String(prNumber), '--json', 'comments']);
+  const id = normalizeRunId(prNumber);
+  if (!id) return { error: 'invalid-argument', reason: 'prNumber 必须是正整数' };
+  const r = runGh(['pr', 'view', id, '--json', 'comments']);
   if (r.missing) return { error: 'gh-missing', guidance: GH_MISSING_GUIDANCE };
   if (r.code !== 0) return { error: 'gh-failed', stderr: r.stderr.slice(0, 300) };
   try {

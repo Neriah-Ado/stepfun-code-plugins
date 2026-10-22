@@ -10,8 +10,10 @@ if (args[0] === 'auth' && args[1] === 'status') {
   }
   out(['github.com account: Neriah (ok)']);
 } else if (args[0] === 'run' && args[1] === 'list') {
+  // C-05：调用方用 `--workflow=<name>` 等号形式传值，避免值被当成选项
+  const wfArg = args.find((a) => a.startsWith('--workflow='));
   const wfIdx = args.indexOf('--workflow');
-  const wf = wfIdx >= 0 ? args[wfIdx + 1] : null;
+  const wf = wfArg ? wfArg.slice('--workflow='.length) : wfIdx >= 0 ? args[wfIdx + 1] : null;
   const all = [
     { databaseId: 9001, displayTitle: 'ci: unit tests', workflowName: 'ci', headBranch: 'main', conclusion: 'failure', createdAt: '2026-09-27T01:00:00Z' },
     { databaseId: 9002, displayTitle: 'deploy: staging', workflowName: 'deploy', headBranch: 'main', conclusion: 'failure', createdAt: '2026-09-26T22:00:00Z' },

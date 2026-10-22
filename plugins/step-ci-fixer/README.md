@@ -21,6 +21,8 @@ CI 失败修复闭环。混合形态：MCP server 包装 `gh` CLI（零依赖 No
 
 `requiresEnv: GITHUB_TOKEN`——未配置时提示 `gh auth login` 或 export 指引，不裸报错；插件零硬编码凭据。
 
+参数安全（C-05）：`runId`/`prNumber` 只接受正整数，`--limit` 收敛到 1..100，`--workflow` 以 `--workflow=<name>` 等号形式传值并拒绝前导 `-`/控制符，避免参数被 gh 当作选项。
+
 ## 安装与验证
 
 ```bash

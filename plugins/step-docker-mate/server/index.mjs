@@ -45,8 +45,12 @@ function handleCall(name, args) {
       return composeLs(ctx);
     case 'image_layers':
       return args?.image ? imageLayers(args.image, ctx) : { error: 'missing-arg: image' };
-    case 'slimming_plan':
-      return args?.image ? (({ layers, biggest }) => ({ image: args.image, ...slimmingPlan(layers) }))(imageLayers(args.image, ctx)) : { error: 'missing-arg: image' };
+    case 'slimming_plan': {
+      if (!args?.image) return { error: 'missing-arg: image' };
+      const layers = imageLayers(args.image, ctx);
+      if (layers.error) return layers;
+      return { image: args.image, ...slimmingPlan(layers.layers) };
+    }
     case 'diagnose':
       return args?.container ? diagnose(args.container, ctx) : { error: 'missing-arg: container' };
     case 'docker_events':

@@ -657,6 +657,20 @@ check(mixed.records.length === 2 && mixed.records[1].total === 7, 'v1/v2 混合�
     check(msgs.find((m) => m.id === 9)?.result?.structuredContent?.biggest?.[0]?.size === '320MB', '镜像层最大层识别');
     check(!existsSync(marker), 'G3：dry-run 未实际执行 down');
 
+    // C-05：容器/镜像名白名单（拒绝 flag 混淆），且不触达 docker
+    const invalidNames = runMcp(
+      [
+        call(1, 'docker_inspect', { container: '--help' }),
+        call(2, 'docker_logs', { container: '-x' }),
+        call(3, 'image_layers', { image: '--help' }),
+        '',
+      ],
+      baseEnv,
+    );
+    check(invalidNames.find((m) => m.id === 1)?.result?.structuredContent?.error === 'invalid-identifier', 'C-05：docker_inspect 拒绝以 - 开头的容器名');
+    check(invalidNames.find((m) => m.id === 2)?.result?.structuredContent?.error === 'invalid-identifier', 'C-05：docker_logs 拒绝非法容器名');
+    check(invalidNames.find((m) => m.id === 3)?.result?.structuredContent?.error === 'invalid-identifier', 'C-05：image_layers 拒绝非法镜像引用');
+
     const msgs2 = runMcp([call(1, 'compose_down', { file: 'compose.yaml', confirm: true }), ''], baseEnv);
     check(msgs2.find((m) => m.id === 1)?.result?.structuredContent?.removed === true, 'compose_down 确认后执行');
     check(existsSync(marker), 'G3：确认后 down 真实执行（fake 标记）');
@@ -780,6 +794,8 @@ check(healthCmd.includes('DOCKER_MATE_CONTEXT'), '日报支持远程 context');
         call3(6, 'rerun_workflow', { runId: 9001 }),
         call3(7, 'run_status', { runId: 9001 }),
         call3(8, 'fetch_pr_comments', { prNumber: 42 }),
+        call3(9, 'list_failed_runs', { workflow: '--evil' }),
+        call3(10, 'fetch_run_log', { runId: '9001; rm -rf /' }),
         '',
       ],
       goodEnv,
@@ -793,6 +809,8 @@ check(healthCmd.includes('DOCKER_MATE_CONTEXT'), '日报支持远程 context');
     check(sc3(msgs, 6)?.rerun === true, 'rerun_workflow 触发');
     check(sc3(msgs, 7)?.conclusion === 'failure', 'run_status 查询');
     check(sc3(msgs, 8)?.comments?.length === 2, 'PR 评论读取');
+    check(sc3(msgs, 9)?.error === 'invalid-argument', 'C-05：list_failed_runs 拒绝以 - 开头的 workflow');
+    check(sc3(msgs, 10)?.error === 'invalid-argument', 'C-05：fetch_run_log 拒绝非整数 runId');
 
     check(classifyCore('error TS2304: Cannot find name "x"') === 'build', '失败分类：build');
     check(classifyCore('npm publish 403 Forbidden deploy') === 'deploy', '失败分类：deploy');

@@ -13,6 +13,7 @@ Docker/Compose 容器运维。混合形态：MCP server 包装 docker CLI（零�
 ## 安全与降级
 
 - 危险操作（down/rm/prune/rmi）默认确认，绝不静默执行；
+- 参数安全（C-05）：容器名/镜像引用走白名单（首字符非 `-`，非法值不触达 docker），`inspect`/`logs`/`history` 的位置参数前加 `--` 终止符，`--tail` 限制在 1..5000；
 - docker CLI 缺失或 daemon 不可用时输出安装/启动指引（G4），不裸报错；
 - 远程主机经 `DOCKER_MATE_CONTEXT` 环境变量（docker context），凭据仅环境注入（C4）。
 

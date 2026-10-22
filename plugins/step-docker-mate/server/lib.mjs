@@ -3,8 +3,25 @@
  * 包装 docker CLI（优先）而非依赖 dockerode；输出结构化 JSON；长日志尾部截断（C5）。
  * 危险操作（compose_down/rm/prune）：默认 dry-run 只列受影响资源，confirm=true 才执行（G3）。
  * 测试缝：DOCKER_MATE_FAKE 指向 fake-docker 脚本（node 执行）；DOCKER_MATE_BIN 覆盖 docker 路径。
+ * v1.3.1（C-05）：容器名/镜像引用白名单 + `--` 终止符，杜绝把用户输入当 docker 选项（flag 混淆）。
  */
 import { spawnSync } from 'node:child_process';
+
+// C-05：名称白名单（且首字符非 '-'，无法伪装成选项）
+const CONTAINER_NAME_RE = /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/;
+const IMAGE_REF_RE = /^[A-Za-z0-9][A-Za-z0-9_.:/@-]{0,255}$/;
+
+export function assertContainerName(name) {
+  const value = typeof name === 'string' ? name.trim() : '';
+  if (!CONTAINER_NAME_RE.test(value)) return { ok: false, reason: '容器名仅允许 [A-Za-z0-9][A-Za-z0-9_.-]{0,127}，且不能以 - 开头' };
+  return { ok: true, value };
+}
+
+export function assertImageRef(ref) {
+  const value = typeof ref === 'string' ? ref.trim() : '';
+  if (!IMAGE_REF_RE.test(value)) return { ok: false, reason: '镜像引用仅允许 [A-Za-z0-9][A-Za-z0-9_.:/@-]{0,255}，且不能以 - 开头' };
+  return { ok: true, value };
+}
 
 export const INSTALL_GUIDANCE = [
   '未检测到可用的 docker CLI。请安装/启动后重试：',
@@ -51,7 +68,9 @@ export function ps(ctx) {
 }
 
 export function inspect(container, ctx) {
-  const r = runDocker(['inspect', container], { context: ctx });
+  const id = assertContainerName(container);
+  if (!id.ok) return { error: 'invalid-identifier', reason: id.reason };
+  const r = runDocker(['inspect', '--', id.value], { context: ctx });
   if (r.missing) return { error: 'docker-not-found', guidance: INSTALL_GUIDANCE };
   if (r.code !== 0) return { error: 'not-found', stderr: r.stderr.slice(0, 300) };
   try {
@@ -70,12 +89,15 @@ export function inspect(container, ctx) {
 
 // C5：日志只取尾部 maxLines（默认 200）
 export function logs(container, { tail = 200, ctx } = {}) {
-  const r = runDocker(['logs', '--tail', String(tail), container], { context: ctx });
+  const id = assertContainerName(container);
+  if (!id.ok) return { error: 'invalid-identifier', reason: id.reason };
+  const safeTail = Math.max(1, Math.min(Math.floor(Number(tail)) || 200, 5000));
+  const r = runDocker(['logs', '--tail', String(safeTail), '--', id.value], { context: ctx });
   if (r.missing) return { error: 'docker-not-found', guidance: INSTALL_GUIDANCE };
   if (r.code !== 0) return { error: 'docker-failed', stderr: r.stderr.slice(0, 300) };
   const text = `${r.stdout}${r.stderr}`.split('\n');
   while (text.length > 0 && text.at(-1) === '') text.pop();
-  return { container, tail, truncated: text.length >= tail, lines: text.slice(-tail) };
+  return { container: id.value, tail: safeTail, truncated: text.length >= safeTail, lines: text.slice(-safeTail) };
 }
 
 export function composeUp(file, { ctx } = {}) {
@@ -217,7 +239,9 @@ export function slimmingPlan(layers) {
 }
 
 export function imageLayers(image, ctx) {
-  const r = runDocker(['history', '--no-trunc', '--format', '{{json .}}', image], { context: ctx });
+  const id = assertImageRef(image);
+  if (!id.ok) return { error: 'invalid-identifier', reason: id.reason };
+  const r = runDocker(['history', '--no-trunc', '--format', '{{json .}}', '--', id.value], { context: ctx });
   if (r.missing || r.code !== 0) return { error: 'docker-failed', stderr: r.stderr.slice(0, 300) };
   const layers = r.stdout.split('\n').filter(Boolean).map((l) => {
     try {

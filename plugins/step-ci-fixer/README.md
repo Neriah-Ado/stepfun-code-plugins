@@ -23,6 +23,12 @@ CI 失败修复闭环。混合形态：MCP server 包装 `gh` CLI（零依赖 No
 
 参数安全（C-05）：`runId`/`prNumber` 只接受正整数，`--limit` 收敛到 1..100，`--workflow` 以 `--workflow=<name>` 等号形式传值并拒绝前导 `-`/控制符，避免参数被 gh 当作选项。
 
+## 安全边界（MCP）
+
+- MCP server 走 stdio JSON-RPC，**无认证、无审计日志**：安全边界即启动它的宿主进程（stdio 继承宿主信任）。
+- **仅限本机**：不要将 stdio 桥接为网络/tcp 服务，也不要把本插件 server 暴露到公网。
+- **工具调用 ≠ 用户授权**：`rerun_workflow` 等写操作与 push 仍需人类确认；GITHUB_TOKEN 仅经环境注入。
+
 ## 安装与验证
 
 ```bash

@@ -13,6 +13,12 @@
 | `sbom_generate` | CycloneDX 1.5 SBOM |
 | `upgrade_plan` / `ci_gate` | 自动修复计划 / CI 阻断判定（默认 critical/high） |
 
+## 安全边界（MCP）
+
+- MCP server 走 stdio JSON-RPC，**无认证、无审计日志**：安全边界即启动它的宿主进程（stdio 继承宿主信任）。
+- **仅限本机**：不要将 stdio 桥接为网络/tcp 服务，也不要把本插件 server 暴露到公网。
+- **工具调用 ≠ 用户授权**：修复 PR / 升级等写操作仍需人类确认；扫描结果只用于本地报告，不上传。
+
 ## 安装与验证
 
 ```bash

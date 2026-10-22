@@ -20,7 +20,7 @@
 | [step-cron-recipes](./plugins/step-cron-recipes) | ![v1.3.0](https://img.shields.io/badge/version-1.3.0-blue) | 定时任务模板库：6 模板 + 向导 + 变量系统 + 社区规范 |
 | [step-marketplace-cc](./plugins/step-marketplace-cc) | ![v1.3.0](https://img.shields.io/badge/version-1.3.0-blue) | Claude Code 插件市场桥：兼容性检查/修补/收录目录 |
 
-12 个首发插件均已达到 v1.3.0；社区贡献的 [step-context-archive](./plugins/step-context-archive)（PR #1）已发布 v1.0.0。
+12 个首发插件均已达到 v1.3.0；其中 step-db-insight / step-api-forge / step-docker-mate / step-ci-fixer / step-sec-scan 已发布 v1.3.1 安全修复。社区贡献的 [step-context-archive](./plugins/step-context-archive)（PR #1）已发布 v1.0.0。
 
 ## 发布说明 / Release Notes
 
@@ -32,6 +32,14 @@
 - [v1.3.0 — 深水区与收官 / Deep Water & Wrap-up](./docs/releases/v1.3.0.md)
 - [step-context-archive v1.0.0 — 首个社区贡献插件发布 / First Community Plugin Release](./docs/releases/step-context-archive-v1.0.0.md)
 - [社区贡献与维护 — 自 PR #1 合并起 / From PR #1 Merge Onward](./docs/releases/community-merge.md)（滚动更新 / rolling）
+
+## 安全边界（MCP）
+
+6 个 MCP server（step-token-meter / step-docker-mate / step-ci-fixer / step-sec-scan / step-api-forge / step-db-insight）均为 **stdio JSON-RPC、零第三方依赖**：
+
+- **无认证、无审计日志**：stdio 继承宿主信任，安全边界就是启动它的 Step Code 进程；不要在不可信工作区安装/启用。
+- **仅限本机**：不要将 stdio 桥接为网络/tcp 服务，也不要把这些 server 暴露到公网（它们没有监听端口，也按设计不打算有）。
+- **工具调用 ≠ 用户授权**：危险操作（删容器、写库、push、生成并运行产物）必须由人类在宿主侧确认；插件里的 `confirm` 参数只是显式语义，不是权限系统。
 
 ## 安装
 

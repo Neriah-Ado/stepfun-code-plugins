@@ -16,6 +16,12 @@ OpenAPI 全链路。混合形态：MCP server（零依赖 Node）内置 3.0/3.1 
 
 生成的代码/文档来自 spec 输入，因此把 spec 当不可信数据处理：path、path 参数名、`operationId`、响应码先过白名单校验，`servers[].url` 作为字符串字面量转义，TS 注释与文档页 HTML 全量转义。非法 spec 会在 `validate_spec` 阶段报错并停止生成；从第三方来源拿 spec 时，仍建议在运行生成产物前人工审查。
 
+## 安全边界（MCP）
+
+- MCP server 走 stdio JSON-RPC，**无认证、无审计日志**：安全边界即启动它的宿主进程（stdio 继承宿主信任）。
+- **仅限本机**：不要将 stdio 桥接为网络/tcp 服务，也不要把本插件 server 暴露到公网。
+- **工具调用 ≠ 用户授权**：生成结果是否落盘/运行由用户决定；本 server 只返回文本，不写文件、不执行生成代码。
+
 ## 安装与验证
 
 ```bash

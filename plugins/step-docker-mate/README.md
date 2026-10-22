@@ -17,6 +17,12 @@ Docker/Compose 容器运维。混合形态：MCP server 包装 docker CLI（零�
 - docker CLI 缺失或 daemon 不可用时输出安装/启动指引（G4），不裸报错；
 - 远程主机经 `DOCKER_MATE_CONTEXT` 环境变量（docker context），凭据仅环境注入（C4）。
 
+## 安全边界（MCP）
+
+- MCP server 走 stdio JSON-RPC，**无认证、无审计日志**：安全边界即启动它的宿主进程（stdio 继承宿主信任）。
+- **仅限本机**：不要将 stdio 桥接为网络/tcp 服务，也不要把本插件 server 暴露到公网；远程操作请用 docker context（`DOCKER_MATE_CONTEXT`）。
+- **工具调用 ≠ 用户授权**：`compose_down` 等危险操作的人类门禁仍需宿主确认（`confirm` 只是显式语义）。
+
 ## 安装
 
 ```bash

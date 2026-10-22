@@ -51,6 +51,7 @@ stepcode-plugins/
 - **C5 Token 经济**：喂给模型的日志/上下文先截断（如 CI 日志只取最后 N KB 错误段）；长输出落盘文件后给路径，不内联全文。
 - **C6 Windows 兼容**：本机为 Windows 11 + Git Bash，脚本路径用正斜杠，避免仅 POSIX 的命令。
 - **C7 上游可变性**：Step Code 处于早期（2026-09-22 开源），实现前先核对官方仓库最新 release notes 中插件相关变更；发现 `entry`/hooks/市场目录开放时，在对应插件 `plugin.yaml` 追加 `adaptation_notes`。
+- **C8 MCP 边界**：MCP server 一律 stdio JSON-RPC，**无认证、无审计日志**——安全边界是启动它的宿主进程；不得把 stdio 桥接为网络/tcp 或暴露到公网。MCP 工具调用 ≠ 用户授权：危险/写操作仍需人类在宿主侧确认，插件内 `confirm` 参数只是显式语义而非权限系统（security-A C-07）。
 
 ## 6. 技术栈约定
 

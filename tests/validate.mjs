@@ -969,7 +969,7 @@ check(healthCmd.includes('DOCKER_MATE_CONTEXT'), '日报支持远程 context');
 
 // ---------- 26b. api-forge mock/docs/diff/python（AF-110/120/130） ----------
 {
-  const { generateMockServer, generateDocsPage, diffOpenApi, generatePythonSdk } = await import('../plugins/step-api-forge/server/lib.mjs');
+  const { generateMockServer, generateDocsPage, diffOpenApi, generatePythonSdk, validateOpenApi, generateTsClient } = await import('../plugins/step-api-forge/server/lib.mjs');
   const spec = JSON.parse(readFileSync(join(ROOT, 'tests/fixtures/openapi/petstore-mini.json'), 'utf8'));
   const mock = generateMockServer(spec, { style: 'express' });
   check(mock.code.includes("app.get('/pets'") && mock.code.includes('app.listen'), 'express mock 生成');
@@ -994,6 +994,32 @@ check(healthCmd.includes('DOCKER_MATE_CONTEXT'), '日报支持远程 context');
 
   const py = generatePythonSdk(spec);
   check(py.code.includes('class ApiClient') && py.code.includes('pets_petId_get') && py.code.includes('import requests'), 'Python SDK 生成');
+
+  // C-04：恶意 spec 不得把可执行代码注入生成产物
+  const hostilePath = JSON.parse(JSON.stringify(spec));
+  hostilePath.paths["/');require('child_process').execSync('calc');//"] = { get: { responses: { '200': { description: 'x' } } } };
+  const hv = validateOpenApi(hostilePath);
+  check(hv.valid === false && hv.errors.some((e) => e.includes('path 含非法字符')), 'C-04：恶意 path 被校验拒绝', JSON.stringify(hv.errors));
+  check(generateMockServer(hostilePath).error === 'spec-invalid', 'C-04：恶意 path 不进入 mock 生成');
+  const respKeySpec = JSON.parse(JSON.stringify(spec));
+  respKeySpec.paths['/pets'].get.responses = { '200);process.exit(1)//': { description: 'x' } };
+  check(validateOpenApi(respKeySpec).valid === false, 'C-04：非法响应码被拒绝');
+  const summarySpec = JSON.parse(JSON.stringify(spec));
+  summarySpec.paths['/pets'].get.summary = 'x */ require("child_process").execSync("calc") /*';
+  const summClient = generateTsClient(summarySpec);
+  check(summClient.code.includes('*\\/ require') && !summClient.code.includes('*/ require'), 'C-04：summary 不提前闭合 TS 注释');
+  const urlSpec = JSON.parse(JSON.stringify(spec));
+  urlSpec.servers = [{ url: 'http://x/";import os;os.system("calc");"' }];
+  const pyHostile = generatePythonSdk(urlSpec);
+  const baseLine = pyHostile.code.split('\n').find((l) => l.startsWith('BASE_URL = '));
+  check(baseLine && JSON.parse(baseLine.slice('BASE_URL = '.length)) === urlSpec.servers[0].url, 'C-04：servers[].url 以 JSON 字符串字面量转义', baseLine);
+  check(!/\nimport os/.test(pyHostile.code), 'C-04：恶意 servers url 不产生可执行行');
+  const badParam = JSON.parse(JSON.stringify(spec));
+  badParam.paths['/pets/{petId}'].get.parameters = [{ name: 'petId");x', in: 'path', required: true }];
+  check(validateOpenApi(badParam).valid === false, 'C-04：非法 path 参数名被拒绝');
+  const badOpId = JSON.parse(JSON.stringify(spec));
+  badOpId.paths['/pets'].get.operationId = 'x; process.exit(1)';
+  check(validateOpenApi(badOpId).valid === false, 'C-04：非法 operationId 被拒绝');
 }
 
 // ---------- 27. step-db-insight（DI-100 ~ DI-130） ----------

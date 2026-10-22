@@ -4,6 +4,11 @@
 
 <!-- 版本节由 tests/bootstrap-changelog.mjs 从 git 历史自举生成 -->
 
+## [1.3.1] - 2026-10-22
+
+### Security
+- C-04：生成器对 OpenAPI 输入做白名单与转义——path 仅允许 URL 安全字符、path 参数名/operationId/响应码校验、`servers[].url` 以 JSON 字符串字面量输出、TS 注释与文档页 HTML 全量转义；恶意 spec 不再能注入可执行代码，合法 spec 输出不变 (AF-131-1)
+
 ## [1.3.0] - 2026-09-27
 
 ### Other Changes

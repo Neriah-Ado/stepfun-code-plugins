@@ -9,6 +9,8 @@ argument-hint: [spec 路径与产物类型，可选；如 "api.json ts"]
 
 `validate_spec`：结构校验（openapi 3.0/3.1 字段、info、paths、每个 operation 必须有 responses）。校验失败列出全部错误并停止。实现为插件内置零依赖校验器（与 tests 同源语义）；网络可用时可换用 @readme/openapi-parser 增强。
 
+安全输入边界（C-04）：path 仅允许 URL 安全字符（`A-Za-z0-9 . _ ~ / { } -`），path 参数名必须是合法标识符，`operationId` 与响应码同样校验；`servers[].url`、注释与文档页 HTML 在生成时转义。非法 spec 直接报错而不是生成可疑产物。从不可信来源获取 spec 时，运行生成产物前仍需人工审查。
+
 ## 2. 生成
 
 | 产物 | 工具 | 落盘默认路径 |

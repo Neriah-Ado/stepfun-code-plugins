@@ -1,8 +1,8 @@
 # step-context-archive v1.0.0 — 首个社区贡献插件发布 / First Community Plugin Release
 
-> 状态 / Status: **released** —— 2026-10-01 打 `step-context-archive-v1.0.0` 标签 / tagged `step-context-archive-v1.0.0` on 2026-10-01
+> 发布日期 / Date: 2026-10-01（已发布，tag `step-context-archive-v1.0.0` / Released, tagged 2026-10-01）
 > 范围 / Scope: 仓库首个社区贡献插件合入并完成验证发布（PR #1，作者 [@uos1231234](https://github.com/uos1231234)）/ First community-contributed plugin, merged and now verified & released (PR #1 by [@uos1231234](https://github.com/uos1231234))
-> 门禁 / Gate: ALL PASS（751 项断言、31 个检查区，含 §31 专属检查区 / 751 assertions across 31 sections incl. the plugin-specific §31）
+> 门禁 / Gate: ALL PASS（751 项断言、31 个检查区，含该插件的专属检查区 / 751 assertions across 31 sections incl. the plugin-specific section）
 
 ---
 
@@ -22,16 +22,16 @@
 ### 社区贡献与维护合入（2026-09-27）
 
 - PR #1 由 [@uos1231234](https://github.com/uos1231234) 于 2026-09-26 发起，
-  声明式形态（清单 + 命令 + 技能，无 `entry` / `hooks` / `lspServers`，符合 C1/C2）；
+  声明式形态（清单 + 命令 + 技能，无 `entry` / `hooks` / `lspServers`，符合平台约束）；
 - 评审实测结论：无安全风险（只写默认目录、不覆盖、召回只读、零依赖零网络）、
-  与 roadmap/marketplace/README 登记齐全、**诚实标注未完成项**（SCA-100-4 当时未做，
-  状态如实标 in-progress，未谎报 done）；
-- 合并后的维护调整：roadmap 冲突按"上游 12 条 done + 追加本插件"解决；
-  命令文本补 `ARCHIVE-RULES` / `RECALL-RULES` JSON 规则块接入 validate §31；
-  §9 CHANGELOG 自举一致性接入本插件；P3 修正——`#STAMP` 索引行改**项目相对路径**、
+  与 roadmap/marketplace/README 登记齐全、**诚实标注未完成项**（真实项目验证项当时未做，
+  状态如实标为进行中，未谎报完成）；
+- 合并后的维护调整：roadmap 冲突按「上游 12 条完成 + 追加本插件」解决；
+  命令文本补 `ARCHIVE-RULES` / `RECALL-RULES` JSON 规则块接入门禁的插件专属检查区；
+  CHANGELOG 自举一致性检查接入本插件；内容修正——`#STAMP` 索引行改**项目相对路径**、
   退化 id（`b` 前缀短 id）明确为主格式的显式例外。
 
-### SCA-100-4 真实项目验证（2026-09-29，随 v1.0.0 置 done）
+### 真实项目验证（2026-09-29，随 v1.0.0 置 done）
 
 贡献者在 PR #1 评论提交了两个真实项目的全链路验证与**全量可复算数据**：
 
@@ -61,22 +61,22 @@
   step 进程目录），并修正路径包含判定的 `..` 旁路——本集合 6 个 MCP 型插件
   （`{"command":"node","args":["server/index.mjs"]}` 写法）在修复前宿主上确实无法启动，
   修复后恢复正常。上游在 [issue #204](https://github.com/stepfun-ai/Step-Code/issues/204)
-  中注明第二项"采用了贡献者提出的方案"。
+  中注明第二项「采用了贡献者提出的方案」。
 
 ### 发布内容与流程
 
-- `plugin.yaml`：SCA-100-4 置 done（验证证据摘要写入任务上下文）、版本与插件状态 done、
+- **开发元数据**：真实项目验证项置 done（验证证据摘要写入任务上下文）、版本与插件状态 done、
   risks 首条更新为上游修复后的口径；
 - roadmap `latest_version: "1.0.0"` / status done；根 README 徽章回填 v1.0.0；
 - CHANGELOG 按仓库惯例由 `tests/bootstrap-changelog.mjs` 从 git 历史自举
   （含修复 a461a6d 许可切换提交引入的自举漂移——该提交当时未重新自举，CI 双平台红，
   本次发布一并修复）；
-- validate §31 的诚实状态守卫同步翻转：现在断言 SCA-100-4 已 done、roadmap 已回填、
+- 门禁的诚实状态守卫同步翻转：现在断言真实项目验证已完成、roadmap 已回填、
   README 徽章已更新——门禁与状态同进退；
 - 许可口径：本集合自 a461a6d 起以 **AGPL-3.0-only** 分发，声明式内容随集合；
   贡献者的独立代码版扩展仓库亦切换为 AGPL-3.0-only（`0e0ce9f`），与本集合口径一致。
 
-### English
+## English
 
 `step-context-archive` is the repo's first community-contributed plugin (PR #1 by
 [@uos1231234](https://github.com/uos1231234), merged 2026-09-27). It archives
@@ -86,7 +86,7 @@ inside the project, leaving a one-line `#STAMP` index with a three-point summary
 archived original text and answers from it. Design principle: **summaries are for
 navigation, originals are for citation**.
 
-**SCA-100-4 real-project verification (2026-09-29, done with this release)**: two
+**Real-project verification (2026-09-29, done with this release)**: two
 real projects, fully reproducible data submitted in PR #1 comments — Atlas Sync
 long-horizon task (auto takeover via compaction hook, 7 blocks / 1067 KB, the model
 recalled early facts from 30 files back without reading files after compaction) and
@@ -111,12 +111,12 @@ on pre-fix hosts and work again after the fix; upstream notes in
 [issue #204](https://github.com/stepfun-ai/Step-Code/issues/204) that the second
 fix "uses the approach you proposed", crediting the contributor.
 
-Release mechanics: `plugin.yaml` flips SCA-100-4 / version / plugin status to done
+Release mechanics: the development metadata flips the real-project verification / version / plugin status to done
 (evidence summarized in the task context) with `risks[0]` updated to the
 post-fix wording; roadmap backfills `latest_version: "1.0.0"`; root README badge
 backfilled; CHANGELOG re-bootstrapped from git history per repo convention (also
 repairing a bootstrap drift introduced by the `a461a6d` license-switch commit,
-which had left CI red on both platforms); validate §31's honesty guard flipped in
+which had left CI red on both platforms); the gate's honesty guard flipped in
 lockstep — it now asserts the done state, the backfill, and the badge. License
 note: the collection has been **AGPL-3.0-only** since `a461a6d`; the declarative
 content ships with it, and the contributor's standalone code-extension repo

@@ -2,18 +2,15 @@
 
 遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 风格，版本号遵循 semver。
 
-<!-- 版本节由 tests/bootstrap-changelog.mjs 从 git 历史自举生成 -->
-
 ## [1.3.1] - 2026-10-22
 
-### Security
-- C-02：`DATABASE_URL` 不再作为 `psql` 的 argv——解析后经 `PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE`（及 sslmode 等）环境变量传子进程，避免密码出现在进程列表/崩溃转储/审计日志；同步更新 `PSQL_FAKE` 测试缝与回归测试 (DI-131-1)
-- C-01：`describe_table` / `sample_rows` 的表名增加标识符白名单（仅 `[A-Za-z_][A-Za-z0-9_$]*`，可 `schema.table`，长度上限 63），拒绝引号/分号/空白/注释符等；文档明确「只读 DB 角色才是真正的边界，插件正则不是」 (DI-131-2)
+### 安全
+
+- `DATABASE_URL` 不再作为 `psql` 的 argv——解析后经 `PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE`（及 sslmode 等）环境变量传子进程，避免密码出现在进程列表、崩溃转储或审计日志；同步更新 `PSQL_FAKE` 测试缝与回归测试。
+- `describe_table` / `sample_rows` 的表名增加标识符白名单（仅 `[A-Za-z_][A-Za-z0-9_$]*`，可 `schema.table`，长度上限 63），拒绝引号/分号/空白/注释符等；文档明确「只读 DB 角色才是真正的边界，插件正则不是」。
 
 ## [1.3.0] - 2026-09-27
 
-### Added
-- db-insight 只读助手与对抗测试 (DI-100-1, DI-100-2, DI-100-3, DI-100-4, DI-110-1, DI-110-2, DI-120-1, DI-120-2, DI-130-1, DI-130-2)
+### 新增
 
-### Other Changes
-- 引入插件仓库骨架与全局开发规范
+- db-insight 只读助手与对抗测试

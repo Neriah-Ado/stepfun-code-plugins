@@ -1,8 +1,12 @@
-# step-commit
+# step-commit — Git 提交工作流套件
 
-Git 提交工作流套件。纯声明式插件（commands + Markdown 提示词，零外部依赖），把 Step Code 变成守规范的提交助手。
+纯声明式插件（commands + Markdown 提示词，零外部依赖），把 Step Code 变成守规范的提交助手。
 
-## 命令
+## 它解决什么
+
+手工写提交信息容易出现格式漂移；推送、建 PR、生成 CHANGELOG、发 release PR 又分别要记不同工具的参数。本插件把这四件事收进斜杠命令：先看 diff，再按 Conventional Commits 生成消息，提交后按平台推送并建 PR；版本发布时从 commit 历史生成 CHANGELOG 与发布 PR。
+
+## 使用
 
 | 命令 | 说明 |
 | --- | --- |
@@ -11,7 +15,7 @@ Git 提交工作流套件。纯声明式插件（commands + Markdown 提示词�
 | `/changelog` | 汇聚 commit 历史按 feat/fix/breaking 分类生成 CHANGELOG 条目，semver 升级建议，确认后打 tag |
 | `/release-pr` | release-please 风格发布 PR：分支 + 版本号 + CHANGELOG，双平台创建 |
 
-## 配置
+### 配置
 
 读取顺序：项目根 `.step-commit.json` > 插件目录 `config.json` > 内置默认。
 
@@ -25,16 +29,9 @@ Git 提交工作流套件。纯声明式插件（commands + Markdown 提示词�
 
 仓库存在 commitlint 配置时，`type-enum`、`header-max-length`、`scope-enum` 等规则自动约束生成结果。
 
-## monorepo
+### monorepo
 
 检测到 `pnpm-workspace.yaml` / `workspaces` / `lerna.json` 时自动进入 monorepo 模式：scope 取 package 名、`/changelog` 按 package 分节出独立 CHANGELOG 与独立版本建议、`/release-pr` 按 package 建 release 分支。基于单根工作区内路径前缀实现，不依赖多根工作区能力。
-
-## 安全规则
-
-- 提交前必须先 `git status` / `git diff --staged` 确认范围；
-- 不 amend 已推送提交、不 force push；
-- pre-commit hook 失败走「归因 → 修复 → 重试」流程，绝不 `--no-verify`（除非用户明确要求）；
-- staged 中疑似机密/大文件时停止并征求用户决定。
 
 ## 安装
 
@@ -45,12 +42,20 @@ Git 提交工作流套件。纯声明式插件（commands + Markdown 提示词�
 
 ## 验证
 
-仓库根目录运行（清单规范 + Conventional Commits 校验 + 安全规则存在性）：
+在仓库根目录运行（清单规范 + Conventional Commits 校验 + 安全规则存在性）：
 
 ```bash
 node tests/validate.mjs
 ```
 
-## License
+## 边界与限制
+
+- 提交前先确认范围：`git status` / `git diff --staged` 是流程的一部分，不跳过。
+- 不 amend 已推送提交、不 force push。
+- pre-commit hook 失败时走「归因 → 修复 → 重试」流程，不默认使用 `--no-verify`（除非用户明确要求）。
+- staged 中疑似机密或大文件时停止并征求用户决定。
+- 推送与建 PR 依赖 `gh`（GitHub）或 `glab`（GitLab）；工具缺失时输出安装指引，不裸报错。
+
+## 许可证
 
 [AGPL-3.0-only](../../LICENSE)

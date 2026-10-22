@@ -8,7 +8,7 @@ import { createInterface } from 'node:readline';
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { assertReadOnlyQuery, readOnlyQuery, interpretExplain, CREDENTIAL_GUIDANCE, buildMigration, slowQueryAdvice, classifyWrite, buildWriteConfirmation, schemaTimeline } from './lib.mjs';
+import { assertReadOnlyQuery, readOnlyQuery, interpretExplain, CREDENTIAL_GUIDANCE, buildMigration, slowQueryAdvice, classifyWrite, buildWriteConfirmation, schemaTimeline, assertIdentifier } from './lib.mjs';
 
 const PLUGIN_DIR = join(dirname(fileURLToPath(import.meta.url)), '..');
 const VERSION = JSON.parse(readFileSync(join(PLUGIN_DIR, 'step.plugin.json'), 'utf8')).version;
@@ -39,15 +39,22 @@ function handleCall(name, args) {
     }
     case 'describe_table': {
       if (!args?.table) return { error: 'missing-arg: table' };
+      // C-01：库/表名标识符白名单，阻止用引号/分号逃逸出字符串字面量
+      const id = assertIdentifier(args.table);
+      if (!id.ok) return { error: 'invalid-identifier', reason: id.reason };
       const q = DIALECT === 'postgres'
-        ? `SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_name = '${args.table}'`
-        : `SELECT * FROM ${args.table} LIMIT 0`;
+        ? (id.schema
+          ? `SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_schema = '${id.schema}' AND table_name = '${id.table}'`
+          : `SELECT column_name, data_type, is_nullable FROM information_schema.columns WHERE table_name = '${id.table}'`)
+        : `SELECT * FROM ${id.schema ? `${id.schema}.` : ''}${id.table} LIMIT 0`;
       return readOnlyQuery(q);
     }
     case 'sample_rows': {
       if (!args?.table) return { error: 'missing-arg: table' };
-      const limit = Math.min(Number(args.limit) || 20, 100);
-      return readOnlyQuery(`SELECT * FROM ${args.table} LIMIT ${limit}`);
+      const id = assertIdentifier(args.table);
+      if (!id.ok) return { error: 'invalid-identifier', reason: id.reason };
+      const limit = Math.max(1, Math.min(Math.floor(Number(args.limit)) || 20, 100));
+      return readOnlyQuery(`SELECT * FROM ${id.schema ? `${id.schema}.` : ''}${id.table} LIMIT ${limit}`);
     }
     case 'explain_query': {
       if (!args?.sql) return { error: 'missing-arg: sql' };

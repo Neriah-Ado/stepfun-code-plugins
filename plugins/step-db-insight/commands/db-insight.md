@@ -11,8 +11,10 @@ argument-hint: [表名或 SQL，可选]
 ```json
 {
   "readonly": "双重防线：① 连接层只读（建议只读账号/只读事务）② 语句白名单解析（仅 SELECT/EXPLAIN/SHOW）",
+  "real_boundary": "插件正则/白名单只防误操作，真正的安全边界是数据库只读账号（仅 GRANT SELECT）或只读事务；禁止用超级用户连接",
+  "identifier_whitelist": "describe_table/sample_rows 的表名仅允许未加引号的 [A-Za-z_][A-Za-z0-9_$]*（可 schema.table），拒绝引号/分号/空白/注释符",
   "reject": "任何写关键字（INSERT/UPDATE/DELETE/DROP/...）、多语句、注释走私一律拒绝并说明原因",
-  "credential": "DATABASE_URL 仅环境注入，禁止落盘/打印/提交仓库",
+  "credential": "DATABASE_URL 仅环境注入，禁止落盘/打印/提交仓库；连接串解析后经 PG* 环境变量传给 psql，密码不进 argv/进程列表",
   "degrade": "DATABASE_URL 未配置时输出 export 示例指引；psql 缺失时给安装指引"
 }
 ```

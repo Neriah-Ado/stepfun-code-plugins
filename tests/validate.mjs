@@ -999,7 +999,7 @@ check(healthCmd.includes('DOCKER_MATE_CONTEXT'), '日报支持远程 context');
 // ---------- 27. step-db-insight（DI-100 ~ DI-130） ----------
 {
   const diDir = join(ROOT, 'plugins/step-db-insight');
-  const { assertReadOnlyQuery, interpretExplain, buildMigration, classifyWrite, buildWriteConfirmation, dialectInfo, schemaTimeline } =
+  const { assertReadOnlyQuery, interpretExplain, buildMigration, classifyWrite, buildWriteConfirmation, dialectInfo, schemaTimeline, assertIdentifier, parseDatabaseUrl, runPsql } =
     await import('../plugins/step-db-insight/server/lib.mjs');
 
   // 只读保证对抗测试（验收标准：任何路径都无法产生写语句执行）
@@ -1028,6 +1028,45 @@ check(healthCmd.includes('DOCKER_MATE_CONTEXT'), '日报支持远程 context');
   const diCmd = readFileSync(join(diDir, 'commands/db-insight.md'), 'utf8');
   check(diCmd.includes('环境注入') && diCmd.includes('export 示例'), '凭据指引含 export 示例与环境注入（C4）');
 
+  // C-01：标识符白名单（拒绝引号/分号/多段/超长，允许 schema.table）
+  check(assertIdentifier('public.users').ok === true && assertIdentifier('public.users').schema === 'public', 'C-01：schema.table 合法标识符放行');
+  for (const badName of ["users'", 'users;drop', 'users --', 'a.b.c', '1users', 'users"', 'users x', 'x'.repeat(64)]) {
+    check(assertIdentifier(badName).ok === false, `C-01：非法标识符被拒绝「${badName.slice(0, 24)}」`, JSON.stringify(assertIdentifier(badName)));
+  }
+  check(diCmd.includes('只读账号') && diCmd.includes('白名单'), 'C-01：命令文档强调只读账号是真正边界');
+
+  // C-02：连接串解析为 PG* 环境变量（不保留连接串/密码）
+  const parsedUrl = parseDatabaseUrl('postgres://u:p%40ss@db.example:5433/app?sslmode=require');
+  check(
+    parsedUrl.env?.PGHOST === 'db.example' && parsedUrl.env?.PGPORT === '5433' && parsedUrl.env?.PGUSER === 'u' &&
+      parsedUrl.env?.PGPASSWORD === 'p@ss' && parsedUrl.env?.PGDATABASE === 'app' && parsedUrl.env?.PGSSLMODE === 'require',
+    'C-02：DATABASE_URL 拆分为 PG* 环境变量',
+    JSON.stringify(parsedUrl),
+  );
+  check(!JSON.stringify(parsedUrl).includes('postgres://') && parseDatabaseUrl('nonsense').error === 'invalid-credential-url', 'C-02：解析结果不保留原始连接串且非法串报错');
+  const connParsed = parseDatabaseUrl("host=db.example port=5433 user=u password='se cret' dbname=app");
+  check(connParsed.env?.PGPASSWORD === 'se cret' && connParsed.env?.PGDATABASE === 'app', 'C-02：libpq conninfo 形式同样支持', JSON.stringify(connParsed));
+
+  // C-02：子进程 argv 不含密码/连接串（探测脚本记录 argv 与 PG* 环境）
+  const probeScript = join(ROOT, 'tests/fixtures/psql-fake/arg-probe.mjs');
+  const probeOut = join(ROOT, 'tests/fixtures/psql-fake/arg-probe.tmp.json');
+  const prevFake = process.env.PSQL_FAKE;
+  const prevOut = process.env.PSQL_PROBE_OUT;
+  rmSync(probeOut, { force: true });
+  process.env.PSQL_FAKE = probeScript;
+  process.env.PSQL_PROBE_OUT = probeOut;
+  try {
+    const run = runPsql("SELECT 'SECRET-SQL'", { databaseUrl: 'postgres://u:topsecret@db.example:5433/app' });
+    check(run.code === 0, 'C-02：fake psql 经环境变量调用成功', JSON.stringify(run));
+    const probe = JSON.parse(readFileSync(probeOut, 'utf8'));
+    check(JSON.stringify(probe.args) === JSON.stringify(["SELECT 'SECRET-SQL'"]), 'C-02：argv 只有 SQL,无连接串/密码', JSON.stringify(probe.args));
+    check(probe.pg.PGPASSWORD === 'topsecret' && probe.pg.PGHOST === 'db.example' && probe.pg.PGDATABASE === 'app', 'C-02：密码经 PGPASSWORD 环境变量传入', JSON.stringify(probe.pg));
+  } finally {
+    if (prevFake === undefined) delete process.env.PSQL_FAKE; else process.env.PSQL_FAKE = prevFake;
+    if (prevOut === undefined) delete process.env.PSQL_PROBE_OUT; else process.env.PSQL_PROBE_OUT = prevOut;
+    rmSync(probeOut, { force: true });
+  }
+
   // v1.1/v1.2/v1.3
   const mig = buildMigration('add user bio', 'add bio column', 'postgres');
   check(/^\d{14}_add_user_bio\.sql$/.test(mig.filename) && mig.sql.includes('+up') && mig.sql.includes('+down'), '迁移草稿命名与 up/down');
@@ -1053,9 +1092,20 @@ check(healthCmd.includes('DOCKER_MATE_CONTEXT'), '日报支持远程 context');
   };
   const call5 = (id, name, args) => JSON.stringify({ jsonrpc: '2.0', id, method: 'tools/call', params: { name, arguments: args ?? {} } });
   const fake = join(ROOT, 'tests/fixtures/psql-fake/fake-psql.mjs');
-  const msgs = runMcp5([call5(1, 'list_tables'), call5(2, 'read_query', { sql: 'SELECT 1; DROP TABLE users' }), ''], { ...process.env, PSQL_FAKE: fake, DATABASE_URL: 'postgres://u:p@localhost/db', DB_DIALECT: 'postgres' });
+  const msgs = runMcp5(
+    [
+      call5(1, 'list_tables'),
+      call5(2, 'read_query', { sql: 'SELECT 1; DROP TABLE users' }),
+      call5(3, 'describe_table', { table: "users' UNION SELECT 1--" }),
+      call5(4, 'sample_rows', { table: 'public.users' }),
+      '',
+    ],
+    { ...process.env, PSQL_FAKE: fake, DATABASE_URL: 'postgres://u:p@localhost/db', DB_DIALECT: 'postgres' },
+  );
   check(msgs.find((m) => m.id === 1)?.result?.structuredContent?.output?.includes('users'), 'MCP list_tables（fake psql）');
   check(msgs.find((m) => m.id === 2)?.result?.structuredContent?.rejected === true, 'MCP 只读守卫拒绝写语句');
+  check(msgs.find((m) => m.id === 3)?.result?.structuredContent?.error === 'invalid-identifier', 'C-01：MCP describe_table 拒绝非法表名');
+  check(msgs.find((m) => m.id === 4)?.result?.structuredContent?.output?.includes('a@b.c'), 'C-01：schema.table 正常查询（fake psql）');
   const nocred = runMcp5([call5(1, 'list_tables'), ''], { ...process.env, PSQL_FAKE: fake, DATABASE_URL: '' });
   check(nocred.find((m) => m.id === 1)?.result?.content?.[0]?.text?.includes('DATABASE_URL'), 'G4：缺凭据输出 export 指引');
 }

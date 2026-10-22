@@ -12,6 +12,8 @@ export const CREDENTIAL_GUIDANCE = [
   '- PowerShell：$env:DATABASE_URL = "postgres://user:pass@host:5432/db"',
   '- Git Bash：export DATABASE_URL="postgres://user:pass@host:5432/db"',
   '安全提示：连接串含密码，仅注入当前会话环境，禁止写入文件或提交到仓库（C4）。',
+  '只读边界：插件内的语句白名单/标识符白名单只防误操作，**真正的边界是数据库只读账号**（仅 GRANT SELECT）或只读事务；不要用超级用户连接（C-01）。',
+  '连接串不会被放进 psql 的 argv：工具会解析后经 PGHOST/PGPORT/PGUSER/PGPASSWORD/PGDATABASE 环境变量传给子进程，避免进程列表泄露密码（C-02）。',
 ].join('\n');
 
 const WRITE_RE = /\b(insert|update|delete|drop|alter|truncate|grant|revoke|create|vacuum|call|do|merge|replace|copy)\b/i;
@@ -39,15 +41,132 @@ export function assertReadOnlyQuery(sql) {
   return { ok: true };
 }
 
+// ---------- C-01：标识符白名单（表/库/列名；只允许未加引号的普通标识符） ----------
+const IDENTIFIER_RE = /^[A-Za-z_][A-Za-z0-9_$]*$/;
+const MAX_IDENTIFIER_LEN = 63; // PostgreSQL 标识符上限（字节）
+
+/**
+ * 校验表/库/列名。允许 `schema.table` 两段；拒绝引号、分号、空白、注释符等。
+ * 返回 { ok, schema, table } 或 { ok:false, reason }。校验通过的值仍只作为字符串字面量/标识符拼接。
+ */
+export function assertIdentifier(name) {
+  if (typeof name !== 'string' || !name.trim()) return { ok: false, reason: '标识符为空' };
+  const parts = name.trim().split('.');
+  if (parts.length > 2) return { ok: false, reason: '最多允许 schema.table 两段' };
+  for (const part of parts) {
+    if (!IDENTIFIER_RE.test(part)) {
+      return { ok: false, reason: '标识符仅允许未加引号的 [A-Za-z_][A-Za-z0-9_$]*（拒绝引号/分号/空白/注释符等）' };
+    }
+    if (part.length > MAX_IDENTIFIER_LEN) {
+      return { ok: false, reason: `标识符超长（上限 ${MAX_IDENTIFIER_LEN}）：${part.slice(0, 20)}…` };
+    }
+  }
+  return { ok: true, schema: parts.length === 2 ? parts[0] : null, table: parts.at(-1) };
+}
+
+// ---------- C-02：连接串解析为 PG* 环境变量（密码不再出现在 psql argv） ----------
+const PG_ENV_KEYS = {
+  host: 'PGHOST',
+  hostaddr: 'PGHOSTADDR',
+  port: 'PGPORT',
+  user: 'PGUSER',
+  password: 'PGPASSWORD',
+  dbname: 'PGDATABASE',
+  sslmode: 'PGSSLMODE',
+  application_name: 'PGAPPNAME',
+  connect_timeout: 'PGCONNECT_TIMEOUT',
+};
+
+// libpq connectinfo 字符串（host=... password='...'）解析；无法识别时返回 null
+function parseConninfo(raw) {
+  const tokens = [];
+  let cur = '';
+  let quote = null;
+  let escaped = false;
+  for (const ch of raw) {
+    if (escaped) {
+      cur += ch;
+      escaped = false;
+      continue;
+    }
+    if (ch === '\\') {
+      escaped = true;
+      continue;
+    }
+    if (quote) {
+      if (ch === quote) quote = null;
+      else cur += ch;
+      continue;
+    }
+    if (ch === "'" || ch === '"') {
+      quote = ch;
+      continue;
+    }
+    if (/\s/.test(ch)) {
+      if (cur) tokens.push(cur);
+      cur = '';
+      continue;
+    }
+    cur += ch;
+  }
+  if (escaped || quote) return null;
+  if (cur) tokens.push(cur);
+  const env = {};
+  for (const token of tokens) {
+    const eq = token.indexOf('=');
+    if (eq <= 0) return null;
+    const key = token.slice(0, eq);
+    const envKey = PG_ENV_KEYS[key.toLowerCase()];
+    if (envKey) env[envKey] = token.slice(eq + 1);
+  }
+  return Object.keys(env).length > 0 ? env : null;
+}
+
+/**
+ * 把 DATABASE_URL（postgres:// 或 libpq conninfo）拆成 PG* 环境变量。
+ * 返回 { env } 或 { error, guidance }；任何分支都不会保留原始连接串。
+ */
+export function parseDatabaseUrl(databaseUrl) {
+  if (typeof databaseUrl !== 'string' || !databaseUrl.trim()) return { error: 'missing-credential' };
+  const raw = databaseUrl.trim();
+  if (/^postgres(ql)?:\/\//i.test(raw)) {
+    let u;
+    try {
+      u = new URL(raw);
+    } catch {
+      return { error: 'invalid-credential-url', guidance: 'DATABASE_URL 不是合法连接串；请使用 postgres://user:pass@host:port/db 形式。' };
+    }
+    const env = {};
+    if (u.hostname) env.PGHOST = u.hostname;
+    if (u.port) env.PGPORT = u.port;
+    if (u.username) env.PGUSER = decodeURIComponent(u.username);
+    if (u.password) env.PGPASSWORD = decodeURIComponent(u.password);
+    const db = u.pathname.replace(/^\//, '');
+    if (db) env.PGDATABASE = decodeURIComponent(db);
+    for (const [key, value] of u.searchParams) {
+      const envKey = PG_ENV_KEYS[key.toLowerCase()];
+      if (envKey) env[envKey] = value;
+    }
+    return { env };
+  }
+  const conninfo = parseConninfo(raw);
+  if (conninfo) return { env: conninfo };
+  return { error: 'invalid-credential-url', guidance: '无法解析 DATABASE_URL；请使用 postgres://user:pass@host:port/db 或 libpq conninfo（host=... dbname=...）。' };
+}
+
 export function runPsql(sql, { databaseUrl } = {}) {
   const url = databaseUrl ?? process.env.DATABASE_URL;
   if (!url) return { missingCredential: true };
+  const parsed = parseDatabaseUrl(url);
+  if (parsed.error) return { invalidCredential: true, guidance: parsed.guidance };
+  // C-02：连接串只经 PG* 环境变量传子进程（argv 仅含 SQL），避免密码出现在进程列表/审计日志
+  const env = { ...process.env, ...parsed.env };
   if (process.env.PSQL_FAKE) {
-    const r = spawnSync(process.execPath, [process.env.PSQL_FAKE, sql], { encoding: 'utf8' });
+    const r = spawnSync(process.execPath, [process.env.PSQL_FAKE, sql], { encoding: 'utf8', env });
     return { code: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '', missing: Boolean(r.error) };
   }
   const bin = process.env.PSQL_BIN || 'psql';
-  const r = spawnSync(bin, [url, '-c', sql], { encoding: 'utf8', shell: false });
+  const r = spawnSync(bin, ['-c', sql], { encoding: 'utf8', shell: false, env });
   if (r.error || r.status === null) return { code: null, stdout: '', stderr: String(r.error?.message ?? 'spawn failed'), missing: true };
   return { code: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '', missing: false };
 }
@@ -58,6 +177,7 @@ export function readOnlyQuery(sql, opts) {
   if (!guard.ok) return { rejected: true, reason: guard.reason };
   const r = runPsql(sql, opts);
   if (r.missingCredential) return { error: 'missing-credential', guidance: CREDENTIAL_GUIDANCE };
+  if (r.invalidCredential) return { error: 'invalid-credential', guidance: r.guidance };
   if (r.missing) return { error: 'psql-missing', guidance: '未检测到 psql CLI。请安装 PostgreSQL 客户端工具后重试。' };
   if (r.code !== 0) return { error: 'query-failed', stderr: r.stderr.slice(0, 500) };
   return { output: r.stdout.slice(0, 16 * 1024) };
@@ -107,6 +227,7 @@ export function buildWriteConfirmation(sql, cls, { confirm = false } = {}) {
   }
   const r = runPsql(sql);
   if (r.missingCredential) return { error: 'missing-credential', guidance: CREDENTIAL_GUIDANCE };
+  if (r.invalidCredential) return { error: 'invalid-credential', guidance: r.guidance };
   if (r.missing) return { error: 'psql-missing', guidance: '未检测到 psql CLI。请安装 PostgreSQL 客户端工具后重试。' };
   if (r.code !== 0) return { error: 'write-failed', stderr: r.stderr.slice(0, 300) };
   return { executed: true, output: r.stdout.slice(0, 2000) };

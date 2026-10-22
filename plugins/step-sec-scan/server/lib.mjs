@@ -9,20 +9,26 @@ import { readFileSync } from 'node:fs';
 export const SEVERITY_RANK = { critical: 4, high: 3, medium: 2, low: 1 };
 
 // ---------- secret 模式扫描（内置，零依赖） ----------
+// v1.3.1（C-06）：补齐常见前缀（slack/stripe/OpenAI 风格）、PGP 私钥块；generic 值长度门槛 24→20
 export const SECRET_PATTERNS = [
   { id: 'aws-access-key', re: /AKIA[0-9A-Z]{16}/ },
   { id: 'github-pat', re: /gh[pousr]_[A-Za-z0-9]{36,}/ },
-  { id: 'private-key', re: /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/ },
+  { id: 'slack-token', re: /xox[baprs]-[A-Za-z0-9-]{10,}/ },
+  { id: 'stripe-live-key', re: /sk_live_[A-Za-z0-9]{16,}/ },
+  { id: 'private-key', re: /-----BEGIN (?:RSA |EC |OPENSSH |PGP )?PRIVATE KEY(?: BLOCK)?-----/ },
   { id: 'jwt', re: /eyJ[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}/ },
-  { id: 'generic-api-key', re: /(?:api[_-]?key|secret|token|passwd|password)["'\s:=]{1,4}["']?([A-Za-z0-9_\-]{24,})["']?/i },
+  { id: 'openai-key', re: /sk-(?:ant-|proj-)?[A-Za-z0-9_-]{20,}/ },
+  { id: 'generic-api-key', re: /(?:api[_-]?key|secret|token|passwd|password)["'\s:=]{1,4}["']?([A-Za-z0-9_-]{20,})["']?/i },
 ];
 
-// 降噪（SS-100-3，与 skills/sec-audit 的 SEC-NOISE 一致）：测试/示例/文档路径与占位值不算发现
+// 降噪（SS-100-3 / C-06，与 skills/sec-audit 的 SEC-NOISE 一致）：
+// 测试/示例/文档路径不再整体忽略——仅占位值直接忽略，非占位值降级为 low 并标记 noise，
+// 避免「真实密钥写在 tests/docs 里」整体漏报（CI 默认只拦 critical/high，故不会误阻断）。
 export function isNoisePath(path) {
   return /(^|\/)(tests?|__tests__|spec|examples?|fixtures?|docs?|mocks?)(\/|$)/i.test(path ?? '');
 }
 export function isPlaceholderValue(value) {
-  return /^(xxx+|your[_-]?.*|\$\{.*\}|\{\{.*\}\}|<.*>|changeme|example.*)$/i.test(value ?? '');
+  return /^(x{3,}|0{8,}|your[_-]?.*|\$\{.*\}|\{\{.*\}\}|<.*>|changeme|placeholder|redacted|\[?redacted\]?|example.*|sample.*|dummy.*|fake.*|mock.*|test.*)$/i.test(value ?? '');
 }
 
 export function scanSecretsInText(diffText) {
@@ -37,14 +43,22 @@ export function scanSecretsInText(diffText) {
       continue;
     }
     if (currentFile && line.startsWith('+') && !line.startsWith('+++')) lineNo += 1;
-    if (!currentFile || isNoisePath(currentFile)) continue;
+    if (!currentFile) continue;
+    const noisy = isNoisePath(currentFile);
     for (const p of SECRET_PATTERNS) {
       const m = p.re.exec(line);
-      if (m) {
-        const value = m[1] ?? m[0];
-        if (isPlaceholderValue(value)) continue;
-        findings.push({ id: p.id, file: currentFile, line: lineNo, severity: 'critical', evidence: line.slice(0, 120) });
-      }
+      if (!m) continue;
+      const value = m[1] ?? m[0];
+      if (isPlaceholderValue(value)) continue;
+      findings.push({
+        id: p.id,
+        file: currentFile,
+        line: lineNo,
+        severity: noisy ? 'low' : 'critical',
+        ...(noisy ? { noise: true, noiseReason: '测试/示例/文档路径，命中非占位值：降级 low 但不丢弃' } : {}),
+        evidence: line.slice(0, 120),
+      });
+      break; // 同一行只报首个命中，避免同一值被多条规则重复计数
     }
   }
   return findings;

@@ -5,18 +5,25 @@ description: 安全审计方法论：secret 模式识别、误报降噪、依赖
 
 # sec-audit — 安全审计方法论
 
-## 误报降噪规则（SS-100-3）
+## 误报降噪规则（SS-100-3 / C-06）
 
 <!-- SEC-NOISE-START -->
 ```json
 {
   "noise_paths": ["tests/", "test/", "__tests__/", "spec/", "examples/", "fixtures/", "docs/", "mocks/"],
-  "noise_values": ["xxx*", "your-*", "changeme", "${...} 模板", "{{...}} 模板", "<占位>", "example*"],
-  "rule": "命中以上路径或占位值的 secret 样式串降级为忽略；其余全部保留",
-  "dev_deps": "devDependencies 中的 low 级漏洞默认降噪，high 及以上保留"
+  "noise_values": ["xxx*", "0{8,}", "your-*", "changeme", "placeholder", "redacted", "${...} 模板", "{{...}} 模板", "<占位>", "example*", "sample*", "dummy*", "fake*", "mock*", "test*"],
+  "rule": "占位值一律忽略；测试/示例/文档路径不再整体忽略——非占位值降级为 low 并标注 noise，其余路径为 critical",
+  "dev_deps": "devDependencies 中的 low 级漏洞默认降噪，high 及以上保留",
+  "ci_gate": "CI 卡点默认只拦 critical/high，故测试/文档中的疑似值不阻断流水线，但会出现在报告里供人工复核"
 }
 ```
 <!-- SEC-NOISE-END -->
+
+## 扫描范围与 git 历史（C-06）
+
+- 内置 `scan_secrets` 的范围是**传入的 diff/文本**（默认 staged 增量，`--full` 为工作树全量文本）；它**不会**自动遍历 git 历史。
+- 历史扫描是显式步骤：`git log -p --all > /tmp/history.diff` 后把内容传给 `scan_secrets` 的 `diffText`（该格式已被解析器支持）；或用 `gitleaks detect --log-opts=--all` 做二进制级扫描。历史扫描通常较慢且噪声更多，建议只在轮换/审计时执行。
+- 已删除文件与旧 tag 中的凭据同样需要历史扫描；命中后按「轮换 > 清历史 > 报告」处置。
 
 ## pre-commit hook 集成模式（SS-110-2）
 

@@ -6,7 +6,7 @@
 
 | 工具 | 说明 |
 | --- | --- |
-| `scan_secrets` | secret 模式扫描（staged 增量），测试/示例/文档路径与占位值自动降噪 |
+| `scan_secrets` | secret 模式扫描（staged 增量/给定 diff 文本）；占位值忽略，测试/示例/文档路径的非占位值降级 low 并标注 noise |
 | `npm_audit` | 依赖漏洞解析（severity/证据/可修复性） |
 | `report` | 结构化报告（Markdown，落盘 docs/security-report.md，C5） |
 | `baseline_diff` | 基线对比：只报新引入，冻结存量 |

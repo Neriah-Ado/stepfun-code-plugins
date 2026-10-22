@@ -13,7 +13,7 @@
 | [step-docker-mate](./plugins/step-docker-mate) | ![v1.3.1](https://img.shields.io/badge/version-1.3.1-blue) | Docker/Compose 运维：MCP 查询/编排、崩溃归因、镜像瘦身，危险操作默认确认 |
 | [step-ci-fixer](./plugins/step-ci-fixer) | ![v1.3.1](https://img.shields.io/badge/version-1.3.1-blue) | CI 失败修复：/ci-fix 闭环、挂机监控、PR 评论交互、多平台日志适配 |
 | [step-fe-kit](./plugins/step-fe-kit) | ![v1.3.0](https://img.shields.io/badge/version-1.3.0-blue) | 前端套件：/dev dev server 管理、视觉验证、/publish 一键发布 |
-| [step-sec-scan](./plugins/step-sec-scan) | ![v1.3.0](https://img.shields.io/badge/version-1.3.0-blue) | 安全审计：/audit secret 扫描+依赖漏洞、基线与 SBOM、CI 卡点 |
+| [step-sec-scan](./plugins/step-sec-scan) | ![v1.3.1](https://img.shields.io/badge/version-1.3.1-blue) | 安全审计：/audit secret 扫描+依赖漏洞、基线与 SBOM、CI 卡点 |
 | [step-api-forge](./plugins/step-api-forge) | ![v1.3.1](https://img.shields.io/badge/version-1.3.1-blue) | OpenAPI 全链路：校验、TS/Python 客户端、mock、breaking diff |
 | [step-db-insight](./plugins/step-db-insight) | ![v1.3.1](https://img.shields.io/badge/version-1.3.1-blue) | 数据库只读助手：schema 浏览、EXPLAIN 解读、受控写入 |
 | [step-doc-gen](./plugins/step-doc-gen) | ![v1.3.0](https://img.shields.io/badge/version-1.3.0-blue) | 文档生成：/readme、/api-docs、中文排版、站点骨架、一致性守护 |

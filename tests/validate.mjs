@@ -899,8 +899,9 @@ check(healthCmd.includes('DOCKER_MATE_CONTEXT'), '日报支持远程 context');
   const ssDir = join(ROOT, 'plugins/step-sec-scan');
   const ssSkill = readFileSync(join(ssDir, 'skills/sec-audit/SKILL.md'), 'utf8');
   const noiseBlock = extractBlock(ssSkill, 'SEC-NOISE');
-  check(noiseBlock !== null && noiseBlock.rule?.includes('降级为忽略'), 'sec-audit 含 SEC-NOISE 降噪规则');
+  check(noiseBlock !== null && noiseBlock.rule?.includes('降级为 low'), 'sec-audit 含 SEC-NOISE 降噪规则');
   check(ssSkill.includes('pre-commit'), 'sec-audit 含 pre-commit 集成模式');
+  check(ssSkill.includes('git log -p --all'), 'C-06：sec-audit 说明 git 历史扫描范围与命令');
 
   const { scanSecretsInText, parseNpmAudit, renderSecurityReport, diffBaseline, buildCycloneDX, buildUpgradePlan, ciGateVerdict } =
     await import('../plugins/step-sec-scan/server/lib.mjs');
@@ -919,8 +920,30 @@ check(healthCmd.includes('DOCKER_MATE_CONTEXT'), '日报支持远程 context');
     '',
   ].join('\n');
   const findings = scanSecretsInText(diff);
-  check(findings.length === 2, 'secret 扫描：2 命中（测试文件降噪、占位值忽略）', JSON.stringify(findings.map((f) => f.id)));
-  check(findings.every((f) => f.severity === 'critical' && f.file === 'src/app.js'), 'secret 发现定位与严重度');
+  check(findings.length === 3, 'secret 扫描：3 命中（占位值忽略；测试路径非占位值降级 low）', JSON.stringify(findings.map((f) => f.id)));
+  check(findings.filter((f) => f.severity === 'critical').every((f) => f.file === 'src/app.js') && findings.filter((f) => f.severity === 'critical').length === 2, 'secret 发现定位与严重度（非测试路径 critical）');
+  check(findings.some((f) => f.file === 'tests/keys.js' && f.severity === 'low' && f.noise === true), 'C-06：测试路径非占位值降级 low 而不丢弃（修复整体漏报）', JSON.stringify(findings.find((f) => f.file === 'tests/keys.js')));
+
+  // C-06：补齐常见前缀与 20 字符级 key、PGP 私钥块
+  const extraSecrets = scanSecretsInText([
+    '+++ b/src/extra.js',
+    '+const apiKey = "abcdefghij0123456789";',
+    '+const slack = "xoxb-1234567890abcdef";',
+    '+const stripe = "sk_live_abcdefghijklmnop";',
+    '+const pk = "-----BEGIN RSA PRIVATE KEY-----";',
+    '+const pgp = "-----BEGIN PGP PRIVATE KEY BLOCK-----";',
+    '+const ignored = "your-api-key-here";',
+    '',
+  ].join('\n'));
+  for (const [id, name] of [
+    ['generic-api-key', '20 字符级 generic key'],
+    ['slack-token', 'Slack token'],
+    ['stripe-live-key', 'Stripe live key'],
+    ['private-key', 'RSA/PGP 私钥块'],
+  ]) {
+    check(extraSecrets.some((f) => f.id === id), `C-06：${name} 检出`, JSON.stringify(extraSecrets.map((f) => f.id)));
+  }
+  check(!extraSecrets.some((f) => f.evidence?.includes('your-api-key-here')), 'C-06：占位值仍然忽略');
 
   const auditSample = JSON.stringify({ vulnerabilities: { lodash: { severity: 'high', range: '<4.17.21', via: [{ title: 'Prototype Pollution' }], fixAvailable: true }, 'left-pad': { severity: 'low', dev: true, via: ['x'], fixAvailable: true } } });
   const auditFindings = parseNpmAudit(auditSample).findings;

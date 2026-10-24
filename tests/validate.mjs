@@ -99,7 +99,12 @@ if (existsSync(join(ROOT, '.git'))) {
   if (probe.status === 0) {
     const log = execFileSync(GIT_BIN, ['log', '--pretty=%s'], { cwd: ROOT, encoding: 'utf8' });
     const subjects = log.split('\n').filter(Boolean);
-    for (const s of subjects) check(checkMessage(s), `git 历史 message 合法「${s}」`);
+    for (const s of subjects) {
+      // GitHub 生成的 merge commit（PR 检出时的临时 "Merge <sha> into <sha>"、
+      // Update branch 的 "Merge branch ..."）不是人工提交，豁免 Conventional Commits 校验
+      if (s.startsWith('Merge ')) continue;
+      check(checkMessage(s), `git 历史 message 合法「${s}」`);
+    }
   } else {
     console.log(`SKIP git 历史校验（找不到 git：${GIT_BIN}，可用 GIT_BIN 环境变量指定）`);
   }
@@ -657,6 +662,20 @@ check(mixed.records.length === 2 && mixed.records[1].total === 7, 'v1/v2 混合�
     check(msgs.find((m) => m.id === 9)?.result?.structuredContent?.biggest?.[0]?.size === '320MB', '镜像层最大层识别');
     check(!existsSync(marker), 'G3：dry-run 未实际执行 down');
 
+    // C-05：容器/镜像名白名单（拒绝 flag 混淆），且不触达 docker
+    const invalidNames = runMcp(
+      [
+        call(1, 'docker_inspect', { container: '--help' }),
+        call(2, 'docker_logs', { container: '-x' }),
+        call(3, 'image_layers', { image: '--help' }),
+        '',
+      ],
+      baseEnv,
+    );
+    check(invalidNames.find((m) => m.id === 1)?.result?.structuredContent?.error === 'invalid-identifier', 'C-05：docker_inspect 拒绝以 - 开头的容器名');
+    check(invalidNames.find((m) => m.id === 2)?.result?.structuredContent?.error === 'invalid-identifier', 'C-05：docker_logs 拒绝非法容器名');
+    check(invalidNames.find((m) => m.id === 3)?.result?.structuredContent?.error === 'invalid-identifier', 'C-05：image_layers 拒绝非法镜像引用');
+
     const msgs2 = runMcp([call(1, 'compose_down', { file: 'compose.yaml', confirm: true }), ''], baseEnv);
     check(msgs2.find((m) => m.id === 1)?.result?.structuredContent?.removed === true, 'compose_down 确认后执行');
     check(existsSync(marker), 'G3：确认后 down 真实执行（fake 标记）');
@@ -780,6 +799,8 @@ check(healthCmd.includes('DOCKER_MATE_CONTEXT'), '日报支持远程 context');
         call3(6, 'rerun_workflow', { runId: 9001 }),
         call3(7, 'run_status', { runId: 9001 }),
         call3(8, 'fetch_pr_comments', { prNumber: 42 }),
+        call3(9, 'list_failed_runs', { workflow: '--evil' }),
+        call3(10, 'fetch_run_log', { runId: '9001; rm -rf /' }),
         '',
       ],
       goodEnv,
@@ -793,6 +814,8 @@ check(healthCmd.includes('DOCKER_MATE_CONTEXT'), '日报支持远程 context');
     check(sc3(msgs, 6)?.rerun === true, 'rerun_workflow 触发');
     check(sc3(msgs, 7)?.conclusion === 'failure', 'run_status 查询');
     check(sc3(msgs, 8)?.comments?.length === 2, 'PR 评论读取');
+    check(sc3(msgs, 9)?.error === 'invalid-argument', 'C-05：list_failed_runs 拒绝以 - 开头的 workflow');
+    check(sc3(msgs, 10)?.error === 'invalid-argument', 'C-05：fetch_run_log 拒绝非整数 runId');
 
     check(classifyCore('error TS2304: Cannot find name "x"') === 'build', '失败分类：build');
     check(classifyCore('npm publish 403 Forbidden deploy') === 'deploy', '失败分类：deploy');
@@ -881,8 +904,9 @@ check(healthCmd.includes('DOCKER_MATE_CONTEXT'), '日报支持远程 context');
   const ssDir = join(ROOT, 'plugins/step-sec-scan');
   const ssSkill = readFileSync(join(ssDir, 'skills/sec-audit/SKILL.md'), 'utf8');
   const noiseBlock = extractBlock(ssSkill, 'SEC-NOISE');
-  check(noiseBlock !== null && noiseBlock.rule?.includes('降级为忽略'), 'sec-audit 含 SEC-NOISE 降噪规则');
+  check(noiseBlock !== null && noiseBlock.rule?.includes('降级为 low'), 'sec-audit 含 SEC-NOISE 降噪规则');
   check(ssSkill.includes('pre-commit'), 'sec-audit 含 pre-commit 集成模式');
+  check(ssSkill.includes('git log -p --all'), 'C-06：sec-audit 说明 git 历史扫描范围与命令');
 
   const { scanSecretsInText, parseNpmAudit, renderSecurityReport, diffBaseline, buildCycloneDX, buildUpgradePlan, ciGateVerdict } =
     await import('../plugins/step-sec-scan/server/lib.mjs');
@@ -901,8 +925,30 @@ check(healthCmd.includes('DOCKER_MATE_CONTEXT'), '日报支持远程 context');
     '',
   ].join('\n');
   const findings = scanSecretsInText(diff);
-  check(findings.length === 2, 'secret 扫描：2 命中（测试文件降噪、占位值忽略）', JSON.stringify(findings.map((f) => f.id)));
-  check(findings.every((f) => f.severity === 'critical' && f.file === 'src/app.js'), 'secret 发现定位与严重度');
+  check(findings.length === 3, 'secret 扫描：3 命中（占位值忽略；测试路径非占位值降级 low）', JSON.stringify(findings.map((f) => f.id)));
+  check(findings.filter((f) => f.severity === 'critical').every((f) => f.file === 'src/app.js') && findings.filter((f) => f.severity === 'critical').length === 2, 'secret 发现定位与严重度（非测试路径 critical）');
+  check(findings.some((f) => f.file === 'tests/keys.js' && f.severity === 'low' && f.noise === true), 'C-06：测试路径非占位值降级 low 而不丢弃（修复整体漏报）', JSON.stringify(findings.find((f) => f.file === 'tests/keys.js')));
+
+  // C-06：补齐常见前缀与 20 字符级 key、PGP 私钥块
+  const extraSecrets = scanSecretsInText([
+    '+++ b/src/extra.js',
+    '+const apiKey = "abcdefghij0123456789";',
+    '+const slack = "xoxb-1234567890abcdef";',
+    '+const stripe = "sk_live_abcdefghijklmnop";',
+    '+const pk = "-----BEGIN RSA PRIVATE KEY-----";',
+    '+const pgp = "-----BEGIN PGP PRIVATE KEY BLOCK-----";',
+    '+const ignored = "your-api-key-here";',
+    '',
+  ].join('\n'));
+  for (const [id, name] of [
+    ['generic-api-key', '20 字符级 generic key'],
+    ['slack-token', 'Slack token'],
+    ['stripe-live-key', 'Stripe live key'],
+    ['private-key', 'RSA/PGP 私钥块'],
+  ]) {
+    check(extraSecrets.some((f) => f.id === id), `C-06：${name} 检出`, JSON.stringify(extraSecrets.map((f) => f.id)));
+  }
+  check(!extraSecrets.some((f) => f.evidence?.includes('your-api-key-here')), 'C-06：占位值仍然忽略');
 
   const auditSample = JSON.stringify({ vulnerabilities: { lodash: { severity: 'high', range: '<4.17.21', via: [{ title: 'Prototype Pollution' }], fixAvailable: true }, 'left-pad': { severity: 'low', dev: true, via: ['x'], fixAvailable: true } } });
   const auditFindings = parseNpmAudit(auditSample).findings;
@@ -969,7 +1015,7 @@ check(healthCmd.includes('DOCKER_MATE_CONTEXT'), '日报支持远程 context');
 
 // ---------- 26b. api-forge mock/docs/diff/python（AF-110/120/130） ----------
 {
-  const { generateMockServer, generateDocsPage, diffOpenApi, generatePythonSdk } = await import('../plugins/step-api-forge/server/lib.mjs');
+  const { generateMockServer, generateDocsPage, diffOpenApi, generatePythonSdk, validateOpenApi, generateTsClient } = await import('../plugins/step-api-forge/server/lib.mjs');
   const spec = JSON.parse(readFileSync(join(ROOT, 'tests/fixtures/openapi/petstore-mini.json'), 'utf8'));
   const mock = generateMockServer(spec, { style: 'express' });
   check(mock.code.includes("app.get('/pets'") && mock.code.includes('app.listen'), 'express mock 生成');
@@ -994,12 +1040,38 @@ check(healthCmd.includes('DOCKER_MATE_CONTEXT'), '日报支持远程 context');
 
   const py = generatePythonSdk(spec);
   check(py.code.includes('class ApiClient') && py.code.includes('pets_petId_get') && py.code.includes('import requests'), 'Python SDK 生成');
+
+  // C-04：恶意 spec 不得把可执行代码注入生成产物
+  const hostilePath = JSON.parse(JSON.stringify(spec));
+  hostilePath.paths["/');require('child_process').execSync('calc');//"] = { get: { responses: { '200': { description: 'x' } } } };
+  const hv = validateOpenApi(hostilePath);
+  check(hv.valid === false && hv.errors.some((e) => e.includes('path 含非法字符')), 'C-04：恶意 path 被校验拒绝', JSON.stringify(hv.errors));
+  check(generateMockServer(hostilePath).error === 'spec-invalid', 'C-04：恶意 path 不进入 mock 生成');
+  const respKeySpec = JSON.parse(JSON.stringify(spec));
+  respKeySpec.paths['/pets'].get.responses = { '200);process.exit(1)//': { description: 'x' } };
+  check(validateOpenApi(respKeySpec).valid === false, 'C-04：非法响应码被拒绝');
+  const summarySpec = JSON.parse(JSON.stringify(spec));
+  summarySpec.paths['/pets'].get.summary = 'x */ require("child_process").execSync("calc") /*';
+  const summClient = generateTsClient(summarySpec);
+  check(summClient.code.includes('*\\/ require') && !summClient.code.includes('*/ require'), 'C-04：summary 不提前闭合 TS 注释');
+  const urlSpec = JSON.parse(JSON.stringify(spec));
+  urlSpec.servers = [{ url: 'http://x/";import os;os.system("calc");"' }];
+  const pyHostile = generatePythonSdk(urlSpec);
+  const baseLine = pyHostile.code.split('\n').find((l) => l.startsWith('BASE_URL = '));
+  check(baseLine && JSON.parse(baseLine.slice('BASE_URL = '.length)) === urlSpec.servers[0].url, 'C-04：servers[].url 以 JSON 字符串字面量转义', baseLine);
+  check(!/\nimport os/.test(pyHostile.code), 'C-04：恶意 servers url 不产生可执行行');
+  const badParam = JSON.parse(JSON.stringify(spec));
+  badParam.paths['/pets/{petId}'].get.parameters = [{ name: 'petId");x', in: 'path', required: true }];
+  check(validateOpenApi(badParam).valid === false, 'C-04：非法 path 参数名被拒绝');
+  const badOpId = JSON.parse(JSON.stringify(spec));
+  badOpId.paths['/pets'].get.operationId = 'x; process.exit(1)';
+  check(validateOpenApi(badOpId).valid === false, 'C-04：非法 operationId 被拒绝');
 }
 
 // ---------- 27. step-db-insight（DI-100 ~ DI-130） ----------
 {
   const diDir = join(ROOT, 'plugins/step-db-insight');
-  const { assertReadOnlyQuery, interpretExplain, buildMigration, classifyWrite, buildWriteConfirmation, dialectInfo, schemaTimeline } =
+  const { assertReadOnlyQuery, interpretExplain, buildMigration, classifyWrite, buildWriteConfirmation, dialectInfo, schemaTimeline, assertIdentifier, parseDatabaseUrl, runPsql } =
     await import('../plugins/step-db-insight/server/lib.mjs');
 
   // 只读保证对抗测试（验收标准：任何路径都无法产生写语句执行）
@@ -1028,6 +1100,45 @@ check(healthCmd.includes('DOCKER_MATE_CONTEXT'), '日报支持远程 context');
   const diCmd = readFileSync(join(diDir, 'commands/db-insight.md'), 'utf8');
   check(diCmd.includes('环境注入') && diCmd.includes('export 示例'), '凭据指引含 export 示例与环境注入（C4）');
 
+  // C-01：标识符白名单（拒绝引号/分号/多段/超长，允许 schema.table）
+  check(assertIdentifier('public.users').ok === true && assertIdentifier('public.users').schema === 'public', 'C-01：schema.table 合法标识符放行');
+  for (const badName of ["users'", 'users;drop', 'users --', 'a.b.c', '1users', 'users"', 'users x', 'x'.repeat(64)]) {
+    check(assertIdentifier(badName).ok === false, `C-01：非法标识符被拒绝「${badName.slice(0, 24)}」`, JSON.stringify(assertIdentifier(badName)));
+  }
+  check(diCmd.includes('只读账号') && diCmd.includes('白名单'), 'C-01：命令文档强调只读账号是真正边界');
+
+  // C-02：连接串解析为 PG* 环境变量（不保留连接串/密码）
+  const parsedUrl = parseDatabaseUrl('postgres://u:p%40ss@db.example:5433/app?sslmode=require');
+  check(
+    parsedUrl.env?.PGHOST === 'db.example' && parsedUrl.env?.PGPORT === '5433' && parsedUrl.env?.PGUSER === 'u' &&
+      parsedUrl.env?.PGPASSWORD === 'p@ss' && parsedUrl.env?.PGDATABASE === 'app' && parsedUrl.env?.PGSSLMODE === 'require',
+    'C-02：DATABASE_URL 拆分为 PG* 环境变量',
+    JSON.stringify(parsedUrl),
+  );
+  check(!JSON.stringify(parsedUrl).includes('postgres://') && parseDatabaseUrl('nonsense').error === 'invalid-credential-url', 'C-02：解析结果不保留原始连接串且非法串报错');
+  const connParsed = parseDatabaseUrl("host=db.example port=5433 user=u password='se cret' dbname=app");
+  check(connParsed.env?.PGPASSWORD === 'se cret' && connParsed.env?.PGDATABASE === 'app', 'C-02：libpq conninfo 形式同样支持', JSON.stringify(connParsed));
+
+  // C-02：子进程 argv 不含密码/连接串（探测脚本记录 argv 与 PG* 环境）
+  const probeScript = join(ROOT, 'tests/fixtures/psql-fake/arg-probe.mjs');
+  const probeOut = join(ROOT, 'tests/fixtures/psql-fake/arg-probe.tmp.json');
+  const prevFake = process.env.PSQL_FAKE;
+  const prevOut = process.env.PSQL_PROBE_OUT;
+  rmSync(probeOut, { force: true });
+  process.env.PSQL_FAKE = probeScript;
+  process.env.PSQL_PROBE_OUT = probeOut;
+  try {
+    const run = runPsql("SELECT 'SECRET-SQL'", { databaseUrl: 'postgres://u:topsecret@db.example:5433/app' });
+    check(run.code === 0, 'C-02：fake psql 经环境变量调用成功', JSON.stringify(run));
+    const probe = JSON.parse(readFileSync(probeOut, 'utf8'));
+    check(JSON.stringify(probe.args) === JSON.stringify(["SELECT 'SECRET-SQL'"]), 'C-02：argv 只有 SQL,无连接串/密码', JSON.stringify(probe.args));
+    check(probe.pg.PGPASSWORD === 'topsecret' && probe.pg.PGHOST === 'db.example' && probe.pg.PGDATABASE === 'app', 'C-02：密码经 PGPASSWORD 环境变量传入', JSON.stringify(probe.pg));
+  } finally {
+    if (prevFake === undefined) delete process.env.PSQL_FAKE; else process.env.PSQL_FAKE = prevFake;
+    if (prevOut === undefined) delete process.env.PSQL_PROBE_OUT; else process.env.PSQL_PROBE_OUT = prevOut;
+    rmSync(probeOut, { force: true });
+  }
+
   // v1.1/v1.2/v1.3
   const mig = buildMigration('add user bio', 'add bio column', 'postgres');
   check(/^\d{14}_add_user_bio\.sql$/.test(mig.filename) && mig.sql.includes('+up') && mig.sql.includes('+down'), '迁移草稿命名与 up/down');
@@ -1053,9 +1164,20 @@ check(healthCmd.includes('DOCKER_MATE_CONTEXT'), '日报支持远程 context');
   };
   const call5 = (id, name, args) => JSON.stringify({ jsonrpc: '2.0', id, method: 'tools/call', params: { name, arguments: args ?? {} } });
   const fake = join(ROOT, 'tests/fixtures/psql-fake/fake-psql.mjs');
-  const msgs = runMcp5([call5(1, 'list_tables'), call5(2, 'read_query', { sql: 'SELECT 1; DROP TABLE users' }), ''], { ...process.env, PSQL_FAKE: fake, DATABASE_URL: 'postgres://u:p@localhost/db', DB_DIALECT: 'postgres' });
+  const msgs = runMcp5(
+    [
+      call5(1, 'list_tables'),
+      call5(2, 'read_query', { sql: 'SELECT 1; DROP TABLE users' }),
+      call5(3, 'describe_table', { table: "users' UNION SELECT 1--" }),
+      call5(4, 'sample_rows', { table: 'public.users' }),
+      '',
+    ],
+    { ...process.env, PSQL_FAKE: fake, DATABASE_URL: 'postgres://u:p@localhost/db', DB_DIALECT: 'postgres' },
+  );
   check(msgs.find((m) => m.id === 1)?.result?.structuredContent?.output?.includes('users'), 'MCP list_tables（fake psql）');
   check(msgs.find((m) => m.id === 2)?.result?.structuredContent?.rejected === true, 'MCP 只读守卫拒绝写语句');
+  check(msgs.find((m) => m.id === 3)?.result?.structuredContent?.error === 'invalid-identifier', 'C-01：MCP describe_table 拒绝非法表名');
+  check(msgs.find((m) => m.id === 4)?.result?.structuredContent?.output?.includes('a@b.c'), 'C-01：schema.table 正常查询（fake psql）');
   const nocred = runMcp5([call5(1, 'list_tables'), ''], { ...process.env, PSQL_FAKE: fake, DATABASE_URL: '' });
   check(nocred.find((m) => m.id === 1)?.result?.content?.[0]?.text?.includes('DATABASE_URL'), 'G4：缺凭据输出 export 指引');
 }

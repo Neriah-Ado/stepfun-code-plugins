@@ -4,6 +4,9 @@ import { appendFileSync } from 'node:fs';
 
 const args = process.argv.slice(2);
 if (args[0] === '--context') args.splice(0, 2); // 远程 context 前缀对 fake 透明
+// C-05：调用方用 `--` 终止选项；fake 与真实 docker 一样把其后的参数当位置参数
+const optionTerminator = args.indexOf('--');
+if (optionTerminator >= 0) args.splice(optionTerminator, 1);
 const marker = process.env.DOCKER_MATE_DOWN_MARKER;
 const out = (lines) => process.stdout.write(lines.map((l) => (typeof l === 'string' ? l : JSON.stringify(l))).join('\n') + '\n');
 

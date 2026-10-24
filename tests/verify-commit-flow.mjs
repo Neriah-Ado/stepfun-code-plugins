@@ -89,7 +89,8 @@ try {
   check(!JSON.stringify(r1).includes('--no-verify') && !JSON.stringify(r2).includes('--no-verify'), '全程未使用 --no-verify');
 
   // —— 流程 5：/commit-push-pr 的 gh 降级路径（G4） ——
-  const gh = spawnSync('gh', ['--version'], { encoding: 'utf8', shell: true });
+  // 清理项（security-A §7-17）：参数为常量且无用户输入，仍改 shell:false 收敛攻击面
+  const gh = spawnSync('gh', ['--version'], { encoding: 'utf8', shell: false });
   const doc = readFileSync(join(ROOT, 'plugins/step-commit/commands/commit-push-pr.md'), 'utf8');
   if (gh.status !== 0) {
     console.log('INFO 本机无 gh，按命令文档输出安装指引：\n未检测到 GitHub CLI。请安装后重试：\nwinget install GitHub.cli\ngh auth login');

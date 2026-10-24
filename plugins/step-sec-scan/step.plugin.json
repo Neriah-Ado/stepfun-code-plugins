@@ -2,7 +2,7 @@
   "id": "step-sec-scan",
   "name": "Step Sec Scan",
   "description": "安全审计：/audit 依赖漏洞 + secret 泄漏扫描（内置模式表与降噪），结构化报告落盘；基线对比与 CycloneDX SBOM；CI 卡点与修复 PR。",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "commands": [
     "commands/audit.md"
   ],

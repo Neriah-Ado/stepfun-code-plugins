@@ -2,7 +2,7 @@
   "id": "step-ci-fixer",
   "name": "Step CI Fixer",
   "description": "CI 失败修复：/ci-fix 定位失败 run → 截取错误段 → 本地修复 → push 重跑闭环；支持 /goal 挂机与 PR 评论交互。",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "commands": [
     "commands/ci-fix.md",
     "commands/ci-watch.md"

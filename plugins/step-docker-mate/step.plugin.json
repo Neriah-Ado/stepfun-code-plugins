@@ -2,7 +2,7 @@
   "id": "step-docker-mate",
   "name": "Step Docker Mate",
   "description": "Docker/Compose 容器运维：MCP 工具查询状态/日志/编排，崩溃归因与镜像瘦身，危险操作默认确认。",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "commands": [
     "commands/docker-health.md"
   ],

@@ -2,7 +2,7 @@
   "id": "step-api-forge",
   "name": "Step API Forge",
   "description": "OpenAPI 全链路：结构校验、TS/Python 客户端生成、mock server、文档页、breaking diff 检测。",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "commands": [
     "commands/api-forge.md"
   ],

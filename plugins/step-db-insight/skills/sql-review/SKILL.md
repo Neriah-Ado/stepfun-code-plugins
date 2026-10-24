@@ -5,6 +5,12 @@ description: 数据库 SQL 审查方法论：只读守卫原则、EXPLAIN 计划
 
 # sql-review — SQL 审查方法论
 
+## 只读边界（READONLY-BOUNDARY）
+
+- **真正的边界是数据库权限**：插件级语句白名单/标识符白名单只防误操作与低级注入，不能替代只读账号。连接必须使用仅 `GRANT SELECT` 的角色（或显式只读事务），禁止用超级用户/拥有写权限的账号。
+- `describe_table` / `sample_rows` 的表名只允许未加引号的 `[A-Za-z_][A-Za-z0-9_$]*`（可带 `schema.` 前缀）；含引号、分号、空白、注释符的输入直接拒绝。
+- `read_query` 仍提供任意只读 SELECT——若连接账号可写，白名单不是沙箱；不要向不可信来源暴露本 MCP server。
+
 ## EXPLAIN 解读规则
 
 <!-- EXPLAIN-RULES-START -->

@@ -99,7 +99,12 @@ if (existsSync(join(ROOT, '.git'))) {
   if (probe.status === 0) {
     const log = execFileSync(GIT_BIN, ['log', '--pretty=%s'], { cwd: ROOT, encoding: 'utf8' });
     const subjects = log.split('\n').filter(Boolean);
-    for (const s of subjects) check(checkMessage(s), `git 历史 message 合法「${s}」`);
+    for (const s of subjects) {
+      // GitHub 生成的 merge commit（PR 检出时的临时 "Merge <sha> into <sha>"、
+      // Update branch 的 "Merge branch ..."）不是人工提交，豁免 Conventional Commits 校验
+      if (s.startsWith('Merge ')) continue;
+      check(checkMessage(s), `git 历史 message 合法「${s}」`);
+    }
   } else {
     console.log(`SKIP git 历史校验（找不到 git：${GIT_BIN}，可用 GIT_BIN 环境变量指定）`);
   }

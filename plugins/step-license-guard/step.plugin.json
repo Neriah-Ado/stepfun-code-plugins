@@ -1,0 +1,10 @@
+{
+  "id": "step-license-guard",
+  "name": "Step License Guard",
+  "description": "依赖许可合规：/license-audit 汇总 npm/pip/go 依赖的 SPDX 许可并按 allow/warn/deny 分级、报告落盘；/license-header 批量校验与补写源文件 SPDX 头（默认 dry-run）。",
+  "version": "1.0.0",
+  "commands": [
+    "commands/license-audit.md",
+    "commands/license-header.md"
+  ]
+}

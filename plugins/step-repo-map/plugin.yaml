@@ -1,0 +1,29 @@
+id: step-repo-map
+name: Step Repo Map
+description: "仓库认知：/repo-map 生成目录树、模块职责与 git 热点导图；/onboard 基于地图生成新人上手路径"
+form: declarative
+priority: P1
+effort: S
+status: done
+manifest: step.plugin.json
+requires_env: []
+verify:
+  - "模块职责缺失信息标 TODO，绝不编造"
+  - "热点统计口径（时间窗、计数方式）在报告中声明"
+versions:
+  - version: "1.0.0"
+    type: major
+    theme: 认知 MVP
+    status: done
+    tasks:
+      - id: RM-100-1
+        title: 实现 commands/repo-map.md（目录树 + 职责 + 热点）
+        done: true
+      - id: RM-100-2
+        title: 实现 commands/onboard.md（上手路径生成）
+        done: true
+    acceptance:
+      - "地图落盘 docs/repo-map.md，含目录树限深与热点 Top 10"
+      - "上手路径每步标注已验证/待验证"
+    risks:
+      - "无 git 历史的仓库热点能力不可用（报告声明并跳过）"

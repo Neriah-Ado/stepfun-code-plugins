@@ -40,6 +40,16 @@
     { "id": "step-doc-gen", "abbr": "DG", "priority": "P2", "form": "declarative", "effort": "S", "spec": "plugins/step-doc-gen/plugin.yaml", "status": "done", "latest_version": "1.3.0" },
     { "id": "step-cron-recipes", "abbr": "CR", "priority": "P2", "form": "declarative", "effort": "S", "spec": "plugins/step-cron-recipes/plugin.yaml", "status": "done", "latest_version": "1.3.0" },
     { "id": "step-marketplace-cc", "abbr": "MC", "priority": "P2", "form": "marketplace", "effort": "M", "spec": "plugins/step-marketplace-cc/plugin.yaml", "status": "done", "latest_version": "1.3.0" },
-    { "id": "step-context-archive", "abbr": "SCA", "priority": "P1", "form": "declarative", "effort": "S-M", "spec": "plugins/step-context-archive/plugin.yaml", "status": "done", "latest_version": "1.0.0" }
+    { "id": "step-context-archive", "abbr": "SCA", "priority": "P1", "form": "declarative", "effort": "S-M", "spec": "plugins/step-context-archive/plugin.yaml", "status": "done", "latest_version": "1.0.0" },
+    { "id": "step-shell-safety", "abbr": "SH", "priority": "P0", "form": "declarative", "effort": "S", "spec": "plugins/step-shell-safety/plugin.yaml", "status": "done", "latest_version": "1.0.0" },
+    { "id": "step-env-vault", "abbr": "EV", "priority": "P1", "form": "declarative", "effort": "S", "spec": "plugins/step-env-vault/plugin.yaml", "status": "done", "latest_version": "1.0.0" },
+    { "id": "step-log-lens", "abbr": "LL", "priority": "P1", "form": "declarative", "effort": "M", "spec": "plugins/step-log-lens/plugin.yaml", "status": "done", "latest_version": "1.0.0" },
+    { "id": "step-regex-lab", "abbr": "RL", "priority": "P2", "form": "declarative", "effort": "S", "spec": "plugins/step-regex-lab/plugin.yaml", "status": "done", "latest_version": "1.0.0" },
+    { "id": "step-license-guard", "abbr": "LG", "priority": "P1", "form": "declarative", "effort": "M", "spec": "plugins/step-license-guard/plugin.yaml", "status": "done", "latest_version": "1.0.0" },
+    { "id": "step-a11y-check", "abbr": "AC", "priority": "P2", "form": "declarative", "effort": "M", "spec": "plugins/step-a11y-check/plugin.yaml", "status": "done", "latest_version": "1.0.0" },
+    { "id": "step-workspace", "abbr": "WS", "priority": "P1", "form": "declarative", "effort": "S", "spec": "plugins/step-workspace/plugin.yaml", "status": "done", "latest_version": "1.0.0" },
+    { "id": "step-todo-flow", "abbr": "TF", "priority": "P2", "form": "declarative", "effort": "S", "spec": "plugins/step-todo-flow/plugin.yaml", "status": "done", "latest_version": "1.0.0" },
+    { "id": "step-mock-data", "abbr": "MD", "priority": "P2", "form": "declarative", "effort": "S", "spec": "plugins/step-mock-data/plugin.yaml", "status": "done", "latest_version": "1.0.0" },
+    { "id": "step-repo-map", "abbr": "RM", "priority": "P1", "form": "declarative", "effort": "S", "spec": "plugins/step-repo-map/plugin.yaml", "status": "done", "latest_version": "1.0.0" }
   ]
 }

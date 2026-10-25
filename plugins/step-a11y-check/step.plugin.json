@@ -1,0 +1,10 @@
+{
+  "id": "step-a11y-check",
+  "name": "Step A11y Check",
+  "description": "无障碍静态审计：/a11y-audit 扫描 JSX/HTML/Vue 模板的常见可访问性问题（缺 alt、无 label、aria 拼写、tabindex 正值）并映射 WCAG 条目、报告落盘；/a11y-fix 按报告定点修复。",
+  "version": "1.0.0",
+  "commands": [
+    "commands/a11y-audit.md",
+    "commands/a11y-fix.md"
+  ]
+}

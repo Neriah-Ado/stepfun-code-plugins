@@ -1,0 +1,10 @@
+{
+  "id": "step-todo-flow",
+  "name": "Step Todo Flow",
+  "description": "项目 TODO 工作流：/todo 管理 TODO.md 增删改查与优先级排序（写盘先 diff 后确认）；/todo-plan 把需求拆成带验收标准的可执行条目（≤7 条）。",
+  "version": "1.0.0",
+  "commands": [
+    "commands/todo.md",
+    "commands/todo-plan.md"
+  ]
+}

@@ -1,0 +1,29 @@
+id: step-a11y-check
+name: Step A11y Check
+description: "无障碍静态审计：/a11y-audit 扫描 JSX/HTML/Vue 模板的可访问性问题并映射 WCAG 条目；/a11y-fix 按报告定点修复（先 diff 后确认）"
+form: declarative
+priority: P2
+effort: M
+status: done
+manifest: step.plugin.json
+requires_env: []
+verify:
+  - "注入的可访问性反模式样本（缺 alt、无 label、tabindex 正值）全部检出"
+  - "修复只按报告定位改写，不做全文件重排"
+versions:
+  - version: "1.0.0"
+    type: major
+    theme: 静态可访问性扫描
+    status: done
+    tasks:
+      - id: AC-100-1
+        title: 实现 commands/a11y-audit.md（扫描与 WCAG 映射）
+        done: true
+      - id: AC-100-2
+        title: 实现 commands/a11y-fix.md（定点修复流程）
+        done: true
+    acceptance:
+      - "报告含 位置 / 问题 / WCAG 条目 / 建议四列"
+      - "修复逐处给 diff，用户确认后落盘"
+    risks:
+      - "静态扫描覆盖不了运行时焦点顺序与对比度实际渲染值，报告中声明"

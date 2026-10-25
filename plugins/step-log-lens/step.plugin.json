@@ -1,0 +1,10 @@
+{
+  "id": "step-log-lens",
+  "name": "Step Log Lens",
+  "description": "本地日志分析：/log-analyze 错误聚类、时间线与脱敏报告（大文件先截断后喂模型），/log-tail 关键字过滤跟踪。纯本地零外发。",
+  "version": "1.0.0",
+  "commands": [
+    "commands/log-analyze.md",
+    "commands/log-tail.md"
+  ]
+}

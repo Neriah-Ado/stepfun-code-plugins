@@ -1,0 +1,10 @@
+{
+  "id": "step-workspace",
+  "name": "Step Workspace Lens",
+  "description": "monorepo 视角：/affected 从 git diff 计算受影响 packages（声明依赖闭包）并给最小验证命令；/workspace-graph 输出 mermaid 依赖图落盘并检测循环依赖。",
+  "version": "1.0.0",
+  "commands": [
+    "commands/affected.md",
+    "commands/workspace-graph.md"
+  ]
+}

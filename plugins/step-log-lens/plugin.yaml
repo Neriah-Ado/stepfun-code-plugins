@@ -1,0 +1,29 @@
+id: step-log-lens
+name: Step Log Lens
+description: "本地日志分析：/log-analyze 错误模式聚类与时间线（大文件截断喂模型，报告落盘）、/log-tail 带关键字过滤的尾部跟踪"
+form: declarative
+priority: P1
+effort: M
+status: done
+manifest: step.plugin.json
+requires_env: []
+verify:
+  - "喂给模型的日志片段不超过截断上限，完整报告只落盘给路径"
+  - "日志中的 token/密钥形态字符串在报告与终端输出中脱敏"
+versions:
+  - version: "1.0.0"
+    type: major
+    theme: C5 经济的日志透视
+    status: done
+    tasks:
+      - id: LL-100-1
+        title: 实现 commands/log-analyze.md（聚类分析 + 报告落盘）
+        done: true
+      - id: LL-100-2
+        title: 实现 commands/log-tail.md（过滤跟踪）
+        done: true
+    acceptance:
+      - "10 万行量级日志分析不把全文塞进对话"
+      - "同类错误合并为一组，含首末时间与计数"
+    risks:
+      - "无时间戳的自由格式日志时间线能力受限（降级为纯聚类）"

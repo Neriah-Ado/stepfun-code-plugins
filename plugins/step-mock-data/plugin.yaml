@@ -1,0 +1,30 @@
+id: step-mock-data
+name: Step Mock Data
+description: "测试数据：/mock-data 按 JSON Schema/TS 类型/表结构生成虚构测试数据；/mask-data 对真实样例数据脱敏"
+form: declarative
+priority: P2
+effort: S
+status: done
+manifest: step.plugin.json
+requires_env: []
+verify:
+  - "生成的全部为虚构数据，绝不使用真实个人信息的样例值"
+  - "脱敏输出保持原格式，可逆信息（可反推原文）需声明"
+versions:
+  - version: "1.0.0"
+    type: major
+    theme: 合规测试数据
+    status: done
+    notes: "红线：mock 生成器不内置任何真实个人信息样本；手机号用虚构测试段，身份证类字段只生成格式占位"
+    tasks:
+      - id: MD-100-1
+        title: 实现 commands/mock-data.md（schema → 虚构数据）
+        done: true
+      - id: MD-100-2
+        title: 实现 commands/mask-data.md（样例脱敏）
+        done: true
+    acceptance:
+      - "生成的数据通过目标 schema 校验规则（类型/必填/枚举）"
+      - "手机号/姓名等字段使用声明为虚构的生成规则"
+    risks:
+      - "复杂 schema（条件式 if/then）只覆盖常见形态，未覆盖项列出并说明"

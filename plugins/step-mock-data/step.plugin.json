@@ -1,0 +1,10 @@
+{
+  "id": "step-mock-data",
+  "name": "Step Mock Data",
+  "description": "测试数据：/mock-data 按 JSON Schema/TS 类型/表结构生成虚构测试数据（内置中文 locale 生成规则，全部为虚构值）；/mask-data 对真实样例数据脱敏且保持格式。",
+  "version": "1.0.0",
+  "commands": [
+    "commands/mock-data.md",
+    "commands/mask-data.md"
+  ]
+}

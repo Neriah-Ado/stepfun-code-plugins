@@ -1,0 +1,10 @@
+{
+  "id": "step-regex-lab",
+  "name": "Step Regex Lab",
+  "description": "正则实验台：/regex-check 逐段解释、正反测试用例表与 ReDoS（灾难性回溯）风险检测；/regex-gen 从样例字符串归纳正则草案。纯静态分析零执行。",
+  "version": "1.0.0",
+  "commands": [
+    "commands/regex-check.md",
+    "commands/regex-gen.md"
+  ]
+}

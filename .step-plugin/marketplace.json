@@ -61,6 +61,56 @@
       "name": "step-cron-recipes",
       "description": "定时任务模板库：6 个场景模板 + init 向导 + 变量系统 + 社区贡献规范",
       "source": "./plugins/step-cron-recipes"
+    },
+    {
+      "name": "step-shell-safety",
+      "description": "Shell 命令安全预检：/shell-check 副作用解释与风险分级、/risk-baseline 项目白名单，预检零执行",
+      "source": "./plugins/step-shell-safety"
+    },
+    {
+      "name": "step-env-vault",
+      "description": ".env 文件管理：/env-diff 缺漏对比（值脱敏）、/env-example 生成可入库的 .env.example",
+      "source": "./plugins/step-env-vault"
+    },
+    {
+      "name": "step-log-lens",
+      "description": "本地日志透视：/log-analyze 错误聚类与时间线（截断喂模型、报告落盘）、/log-tail 过滤跟踪",
+      "source": "./plugins/step-log-lens"
+    },
+    {
+      "name": "step-regex-lab",
+      "description": "正则实验台：/regex-check 逐段解释与 ReDoS 检测、/regex-gen 样例归纳草案",
+      "source": "./plugins/step-regex-lab"
+    },
+    {
+      "name": "step-license-guard",
+      "description": "依赖许可合规：/license-audit SPDX 分级审计与报告、/license-header 批量 SPDX 头（默认 dry-run）",
+      "source": "./plugins/step-license-guard"
+    },
+    {
+      "name": "step-a11y-check",
+      "description": "无障碍静态审计：/a11y-audit 七类反模式扫描映射 WCAG、/a11y-fix 定点最小 diff 修复",
+      "source": "./plugins/step-a11y-check"
+    },
+    {
+      "name": "step-workspace",
+      "description": "monorepo 视角：/affected 依赖闭包算受影响包、/workspace-graph 依赖图与环检测",
+      "source": "./plugins/step-workspace"
+    },
+    {
+      "name": "step-todo-flow",
+      "description": "项目 TODO 工作流：/todo 增删改查（写盘先 diff）、/todo-plan 拆出带验收标准的条目",
+      "source": "./plugins/step-todo-flow"
+    },
+    {
+      "name": "step-mock-data",
+      "description": "测试数据：/mock-data 按 schema 生成虚构数据、/mask-data 真实样例格式保持脱敏",
+      "source": "./plugins/step-mock-data"
+    },
+    {
+      "name": "step-repo-map",
+      "description": "仓库认知：/repo-map 目录树+职责+热点导图、/onboard 新人上手路径（标注验证状态）",
+      "source": "./plugins/step-repo-map"
     }
   ]
 }

@@ -1,0 +1,29 @@
+id: step-license-guard
+name: Step License Guard
+description: "依赖许可合规：/license-audit 汇总 npm/pip/go 依赖 SPDX 许可并按 allow/warn/deny 分级；/license-header 批量补源文件 SPDX 头"
+form: declarative
+priority: P1
+effort: M
+status: done
+manifest: step.plugin.json
+requires_env: []
+verify:
+  - "外部工具（pip-licenses 等）缺失时输出安装指引而非裸报错"
+  - "许可归类基于 SPDX 表达式原文，未知许可列为 unknown 而不猜归类"
+versions:
+  - version: "1.0.0"
+    type: major
+    theme: 许可合规 MVP
+    status: done
+    tasks:
+      - id: LG-100-1
+        title: 实现 commands/license-audit.md（三生态许可汇总与分级）
+        done: true
+      - id: LG-100-2
+        title: 实现 commands/license-header.md（SPDX 头批量校验/补写）
+        done: true
+    acceptance:
+      - "npm 项目离线可审计（读 node_modules package.json）"
+      - "deny 命中时报告显眼标注并给出替换建议方向"
+    risks:
+      - "依赖声明为 LICENSE 文件引用而非 SPDX 时归类保守，归入 unknown"

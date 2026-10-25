@@ -1,0 +1,29 @@
+id: step-env-vault
+name: Step Env Vault
+description: ".env 文件管理：/env-diff 对比缺失与多余 key（值脱敏）、/env-example 从 .env 生成可入库的 .env.example"
+form: declarative
+priority: P1
+effort: S
+status: done
+manifest: step.plugin.json
+requires_env: []
+verify:
+  - "所有输出中的值默认脱敏（只露前 4 字符与长度），--show 原文输出前需显式确认"
+  - "生成的 .env.example 不含任何真实值"
+versions:
+  - version: "1.0.0"
+    type: major
+    theme: 脱敏优先的 env 管理
+    status: done
+    tasks:
+      - id: EV-100-1
+        title: 实现 commands/env-diff.md（/env-diff 对比命令）
+        done: true
+      - id: EV-100-2
+        title: 实现 commands/env-example.md（/env-example 生成命令）
+        done: true
+    acceptance:
+      - "默认输出零完整密钥，样本值在报告中均为掩码形态"
+      - "多环境对比（.env 与 .env.staging 等）正确列出缺漏 key"
+    risks:
+      - "仅覆盖 KEY=VALUE 形态，不解析 shell 展开与多行值"

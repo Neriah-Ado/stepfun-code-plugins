@@ -3,13 +3,13 @@
 [![License: AGPL-3.0-only](https://img.shields.io/badge/license-AGPL--3.0--only-blue.svg)](./LICENSE)
 [![Step Code](https://img.shields.io/badge/Step%20Code-plugin%20collection-111111.svg)](https://github.com/stepfun-ai/Step-Code)
 
-为 [Step Code](https://github.com/stepfun-ai/Step-Code)（阶跃星辰终端 AI Agent）提供 13 个可组合的插件：从提交、测试、CI 到容器、数据库、安全与文档。
+为 [Step Code](https://github.com/stepfun-ai/Step-Code)（阶跃星辰终端 AI Agent）提供 23 个可组合的插件：从提交、测试、CI 到容器、数据库、安全、文档、许可合规与仓库认知。
 
 > **语言策略**：对外文档统一使用简体中文，不提供 `README.en.md`。插件命令、技能提示词与目标用户均以中文为主；发布说明单独采用「中文 + English」双语，避免维护两套容易漂移的并列 README。英文读者可通过发布说明的 English 段与各插件的命令/工具表获取关键信息。
 
 ## 简介
 
-全部插件为声明式形态：`step.plugin.json` 清单 + `commands/` `skills/` Markdown 资源；需要进程能力的插件附带零依赖 MCP server（stdio JSON-RPC）。12 个首发插件均已达到 v1.3.0，其中 step-db-insight / step-api-forge / step-docker-mate / step-ci-fixer / step-sec-scan 已发布 v1.3.1 安全修复。社区贡献的 [step-context-archive](./plugins/step-context-archive)（PR #1）已发布 v1.0.0。
+全部插件为声明式形态：`step.plugin.json` 清单 + `commands/` `skills/` Markdown 资源；需要进程能力的插件附带零依赖 MCP server（stdio JSON-RPC）。12 个首发插件均已达到 v1.3.0，其中 step-db-insight / step-api-forge / step-docker-mate / step-ci-fixer / step-sec-scan 已发布 v1.3.1 安全修复。社区贡献的 [step-context-archive](./plugins/step-context-archive)（PR #1）已发布 v1.0.0。第二批 10 个新插件（shell 安全预检、env 管理、日志透视、正则实验台、许可合规、无障碍审计、monorepo 视角、TODO 工作流、测试数据、仓库地图）已发布 v1.0.0，均为纯声明式、零网络。
 
 ## 插件索引
 
@@ -28,6 +28,16 @@
 | [step-doc-gen](./plugins/step-doc-gen) | ![v1.3.0](https://img.shields.io/badge/version-1.3.0-blue) | 文档生成：README、API 参考、中文排版、站点骨架、一致性守护 | `/readme` · `/api-docs` · `/i18n-docs` · `/site-scaffold` · `/doc-guard` |
 | [step-cron-recipes](./plugins/step-cron-recipes) | ![v1.3.0](https://img.shields.io/badge/version-1.3.0-blue) | 定时任务模板库：6 模板 + 向导 + 变量系统 + 社区规范 | `/cron-recipe init` |
 | [step-marketplace-cc](./plugins/step-marketplace-cc) | ![v1.3.0](https://img.shields.io/badge/version-1.3.0-blue) | Claude Code 插件市场桥：兼容性检查/修补/收录目录 | 兼容性检查 · `catalog.json` |
+| [step-shell-safety](./plugins/step-shell-safety) | ![v1.0.0](https://img.shields.io/badge/version-1.0.0-blue) | Shell 命令安全预检：副作用解释与风险分级、更安全替代、项目风险白名单 | `/shell-check` · `/risk-baseline` |
+| [step-env-vault](./plugins/step-env-vault) | ![v1.0.0](https://img.shields.io/badge/version-1.0.0-blue) | .env 管理：缺漏对比（值脱敏）、生成可入库的 `.env.example` | `/env-diff` · `/env-example` |
+| [step-log-lens](./plugins/step-log-lens) | ![v1.0.0](https://img.shields.io/badge/version-1.0.0-blue) | 日志透视：错误聚类与时间线、截断喂模型、报告落盘、凭据脱敏 | `/log-analyze` · `/log-tail` |
+| [step-regex-lab](./plugins/step-regex-lab) | ![v1.0.0](https://img.shields.io/badge/version-1.0.0-blue) | 正则实验台：逐段解释、正反用例表、ReDoS 风险检测、样例归纳 | `/regex-check` · `/regex-gen` |
+| [step-license-guard](./plugins/step-license-guard) | ![v1.0.0](https://img.shields.io/badge/version-1.0.0-blue) | 依赖许可合规：SPDX 分级审计、报告落盘、源文件 SPDX 头维护 | `/license-audit` · `/license-header` |
+| [step-a11y-check](./plugins/step-a11y-check) | ![v1.0.0](https://img.shields.io/badge/version-1.0.0-blue) | 无障碍静态审计：七类反模式映射 WCAG、定点最小 diff 修复 | `/a11y-audit` · `/a11y-fix` |
+| [step-workspace](./plugins/step-workspace) | ![v1.0.0](https://img.shields.io/badge/version-1.0.0-blue) | monorepo 视角：依赖闭包算受影响包、依赖图与环检测 | `/affected` · `/workspace-graph` |
+| [step-todo-flow](./plugins/step-todo-flow) | ![v1.0.0](https://img.shields.io/badge/version-1.0.0-blue) | TODO 工作流：TODO.md 增删改查（写盘先 diff）、需求拆分带验收标准 | `/todo` · `/todo-plan` |
+| [step-mock-data](./plugins/step-mock-data) | ![v1.0.0](https://img.shields.io/badge/version-1.0.0-blue) | 测试数据：按 schema 生成虚构数据、真实样例格式保持脱敏 | `/mock-data` · `/mask-data` |
+| [step-repo-map](./plugins/step-repo-map) | ![v1.0.0](https://img.shields.io/badge/version-1.0.0-blue) | 仓库认知：目录树+职责+热点导图、新人上手路径（标注验证状态） | `/repo-map` · `/onboard` |
 
 ## 安装
 
@@ -71,6 +81,7 @@ node tests/validate.mjs
 | v1.3.0 | 深水区与收官 / Deep Water & Wrap-up | [v1.3.0](./docs/releases/v1.3.0.md) |
 | step-context-archive v1.0.0 | 首个社区贡献插件发布 / First Community Plugin Release | [发布说明](./docs/releases/step-context-archive-v1.0.0.md) |
 | 社区贡献与维护 | 自 PR #1 合并起 / From PR #1 Merge Onward（滚动更新） | [发布说明](./docs/releases/community-merge.md) |
+| 第二批插件 v1.0.0 | 10 个新插件批量发布 / Second Batch: 10 New Plugins | [发布说明](./docs/releases/batch2-v1.0.0.md) |
 
 ## 文档约定
 

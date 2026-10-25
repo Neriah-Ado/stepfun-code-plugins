@@ -1,0 +1,10 @@
+{
+  "id": "step-env-vault",
+  "name": "Step Env Vault",
+  "description": ".env 文件管理：/env-diff 对比缺失与多余 key（值脱敏）、/env-example 从 .env 生成可入库的 .env.example，零网络零外发。",
+  "version": "1.0.0",
+  "commands": [
+    "commands/env-diff.md",
+    "commands/env-example.md"
+  ]
+}

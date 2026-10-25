@@ -1,0 +1,28 @@
+id: step-todo-flow
+name: Step Todo Flow
+description: "项目 TODO 工作流：/todo 管理 TODO.md 增删改查与优先级；/todo-plan 把需求拆成带验收标准的可执行条目"
+form: declarative
+priority: P2
+effort: S
+status: done
+manifest: step.plugin.json
+requires_env: []
+verify:
+  - "TODO.md 的每次写盘都先展示 diff 再确认"
+  - "拆分条目每条都有可验证的完成标准，禁止「继续完善」类条目"
+versions:
+  - version: "1.0.0"
+    type: major
+    theme: 单文件任务流
+    status: done
+    tasks:
+      - id: TF-100-1
+        title: 实现 commands/todo.md（TODO.md 增删改查）
+        done: true
+      - id: TF-100-2
+        title: 实现 commands/todo-plan.md（需求拆分）
+        done: true
+    acceptance:
+      - "并发场景下写盘前重读文件避免覆盖他人改动"
+      - "拆分条目 ≤ 7 条且逐条可验证"
+    risks: []

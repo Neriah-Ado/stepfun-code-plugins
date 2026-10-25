@@ -1,0 +1,10 @@
+{
+  "id": "step-repo-map",
+  "name": "Step Repo Map",
+  "description": "仓库认知：/repo-map 生成目录树（限深）、模块职责一句话（缺失标 TODO）与 git 热点 Top 10，落盘 docs/repo-map.md；/onboard 基于地图生成新人上手路径（每步标注验证状态）。",
+  "version": "1.0.0",
+  "commands": [
+    "commands/repo-map.md",
+    "commands/onboard.md"
+  ]
+}

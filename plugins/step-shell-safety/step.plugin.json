@@ -1,0 +1,13 @@
+{
+  "id": "step-shell-safety",
+  "name": "Step Shell Safety",
+  "description": "Shell 命令安全预检：/shell-check 解释副作用与风险等级、给出更安全替代；/risk-baseline 维护项目白名单。预检零执行。",
+  "version": "1.0.0",
+  "commands": [
+    "commands/shell-check.md",
+    "commands/risk-baseline.md"
+  ],
+  "skills": [
+    "skills/dangerous-patterns/SKILL.md"
+  ]
+}

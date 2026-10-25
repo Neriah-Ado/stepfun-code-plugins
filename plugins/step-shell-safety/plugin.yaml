@@ -1,0 +1,33 @@
+id: step-shell-safety
+name: Step Shell Safety
+description: "Shell 命令安全预检：/shell-check 解释命令副作用与风险等级、给出更安全替代；/risk-baseline 维护项目风险白名单"
+form: declarative
+priority: P0
+effort: S
+status: done
+manifest: step.plugin.json
+requires_env: []
+verify:
+  - "注入的危险命令样本（rm -rf、force push、curl|sh 等）全部被标记为高危"
+  - "预检过程零执行：被检命令本身绝不运行"
+versions:
+  - version: "1.0.0"
+    type: major
+    theme: 预检 MVP
+    status: done
+    notes: "预检即只读分析：插件本身永不执行被检命令；执行与否、如何执行始终由用户决定"
+    tasks:
+      - id: SH-100-1
+        title: 实现 commands/shell-check.md（/shell-check 预检命令）
+        done: true
+      - id: SH-100-2
+        title: 实现 commands/risk-baseline.md（/risk-baseline 项目白名单）
+        done: true
+      - id: SH-100-3
+        title: 内置危险命令模式库技能 skills/dangerous-patterns
+        done: true
+    acceptance:
+      - "注入的高危命令样本全部检出并给出替代写法"
+      - "白名单命中的命令降级为提示而非拦截"
+    risks:
+      - "模式库覆盖不了全部危险形态，输出必须强调分级是参考而非保证"

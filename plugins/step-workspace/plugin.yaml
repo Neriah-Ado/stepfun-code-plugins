@@ -1,0 +1,29 @@
+id: step-workspace
+name: Step Workspace Lens
+description: "monorepo 视角：/affected 从 git diff 计算受影响 packages 并给最小验证命令；/workspace-graph 输出依赖图与环检测"
+form: declarative
+priority: P1
+effort: S
+status: done
+manifest: step.plugin.json
+requires_env: []
+verify:
+  - "workspace 文件缺失时明确说明非 monorepo，不伪造结果"
+  - "受影响集合基于声明依赖闭包计算，动态引用列 unknown 并声明"
+versions:
+  - version: "1.0.0"
+    type: major
+    theme: affected 计算 MVP
+    status: done
+    tasks:
+      - id: WS-100-1
+        title: 实现 commands/affected.md（diff → 受影响包闭包）
+        done: true
+      - id: WS-100-2
+        title: 实现 commands/workspace-graph.md（依赖图 + 环检测）
+        done: true
+    acceptance:
+      - "npm/pnpm/yarn workspaces、cargo workspace、go.work 三类均可识别"
+      - "直接依赖与传递依赖分层展示"
+    risks:
+      - "动态 require/import 的隐式依赖不在闭包内，输出必须声明"

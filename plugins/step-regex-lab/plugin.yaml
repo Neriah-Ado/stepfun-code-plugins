@@ -1,0 +1,28 @@
+id: step-regex-lab
+name: Step Regex Lab
+description: "正则实验台：/regex-check 逐段解释、测试用例表与 ReDoS 风险检测；/regex-gen 从样例归纳正则草案"
+form: declarative
+priority: P2
+effort: S
+status: done
+manifest: step.plugin.json
+requires_env: []
+verify:
+  - "嵌套量词 + 交替等灾难性回溯形态全部标记 ReDoS 风险并给替代"
+  - "生成的正则必须附反例清单，不允许只给正例"
+versions:
+  - version: "1.0.0"
+    type: major
+    theme: 安全用正则
+    status: done
+    tasks:
+      - id: RL-100-1
+        title: 实现 commands/regex-check.md（解释 + ReDoS 检测）
+        done: true
+      - id: RL-100-2
+        title: 实现 commands/regex-gen.md（样例归纳草案）
+        done: true
+    acceptance:
+      - "注入的灾难性回溯正则样本全部检出并给安全替代"
+      - "草案对未覆盖样例显式列出不匹配项"
+    risks: []

@@ -1,0 +1,151 @@
+/*
+ * Red Queen interface theme for DeepSeek Harness.
+ *
+ * Overrides design tokens only — never component class names — so the app's
+ * own light/dark switch keeps working and layout changes between releases
+ * do not break it. Selectors use `html[data-rq-ui] body` to outrank the
+ * theme plugin's `:root` and `body` declarations whatever the load order.
+ * Alias tokens declared on body resolve against these replaced palette
+ * steps, so one palette swap re-colours the whole interface.
+ *
+ * Everything is keyed to attributes on <html>, which the plugin sets before
+ * first paint and updates live when the settings change:
+ *
+ *   data-rq-ui          the theme is on (absent: Harness's own look)
+ *   data-rq-accent      crimson | biohazard | t-virus | umbrella | custom
+ *   data-rq-base        clinical | carbon | official
+ *   --rq-accent-custom  the custom accent colour (inline style)
+ *
+ *   neutral-bluish-*  cool greys    → clinical white / carbon black / untouched
+ *   deepseek-*        brand blue    → the chosen accent scale
+ *   radius + shape    soft squircle → chamfered containment corners
+ *
+ * Elements that must stay round (switches, dots, pills) opt out of the
+ * global corner shape in the app's own CSS, so they are unaffected.
+ */
+
+/* Accent presets. Declared unconditionally so the settings page can paint
+   its swatches even while the theme is off; lib/index.js keeps the same
+   values for the splash (the host tests check they match). */
+html {
+  --rq-accent-crimson: #c8102e;
+  --rq-accent-biohazard: #a4c639;
+  --rq-accent-tvirus: #7b2d8e;
+  --rq-accent-umbrella: #d42027;
+}
+
+html[data-rq-ui] body,
+html[data-rq-ui] body[data-ds-dark-theme] {
+  /* Containment-grade geometry: tighter radii cut as chamfers. */
+  --dsw-radius-xs: 2px;
+  --dsw-radius-sm: 4px;
+  --dsw-radius-md: 6px;
+  --dsw-radius-lg: 8px;
+  --dsw-radius-xl: 10px;
+  --dsw-radius-panel: 12px;
+  --dsw-corner-shape: bevel;
+
+  --dsw-alias-bg-document-selection: color-mix(in srgb, var(--dsw-static-deepseek-500) 30%, transparent);
+}
+
+/* Accent scale, derived from one colour. Light steps blend toward white and
+   deep steps toward cold charcoal in OKLab, so every preset keeps the same
+   ladder of contrast as the hand-tuned crimson below. */
+html[data-rq-ui] {
+  --rq-accent-now: var(--rq-accent-custom, var(--rq-accent-crimson));
+}
+html[data-rq-ui][data-rq-accent=biohazard] { --rq-accent-now: var(--rq-accent-biohazard); }
+html[data-rq-ui][data-rq-accent=t-virus] { --rq-accent-now: var(--rq-accent-tvirus); }
+html[data-rq-ui][data-rq-accent=umbrella] { --rq-accent-now: var(--rq-accent-umbrella); }
+
+html[data-rq-ui] body,
+html[data-rq-ui] body[data-ds-dark-theme] {
+  --dsw-static-deepseek-50: color-mix(in oklab, var(--rq-accent-now) 8%, #fff);
+  --dsw-static-deepseek-100: color-mix(in oklab, var(--rq-accent-now) 17%, #fff);
+  --dsw-static-deepseek-200: color-mix(in oklab, var(--rq-accent-now) 34%, #fff);
+  --dsw-static-deepseek-300: color-mix(in oklab, var(--rq-accent-now) 54%, #fff);
+  --dsw-static-deepseek-400: color-mix(in oklab, var(--rq-accent-now) 80%, #fff);
+  --dsw-static-deepseek-450: color-mix(in oklab, var(--rq-accent-now) 90%, #fff);
+  --dsw-static-deepseek-500: var(--rq-accent-now);
+  --dsw-static-deepseek-600: color-mix(in oklab, var(--rq-accent-now) 82%, #000);
+  --dsw-static-deepseek-700-delete: color-mix(in oklab, var(--rq-accent-now) 66%, #000);
+  --dsw-static-deepseek-800: color-mix(in oklab, var(--rq-accent-now) 40%, #1a1a1e);
+  --dsw-static-deepseek-900: color-mix(in oklab, var(--rq-accent-now) 24%, #1a1a1e);
+}
+
+/* Crimson keeps its hand-tuned scale: links, info buttons, the user's
+   message bubble, the active sidebar item. */
+html[data-rq-ui]:not([data-rq-accent]) body,
+html[data-rq-ui][data-rq-accent=crimson] body {
+  --dsw-static-deepseek-50: #fdf1f3;
+  --dsw-static-deepseek-100: #fadde1;
+  --dsw-static-deepseek-200: #f5bcc4;
+  --dsw-static-deepseek-300: #ee8e9b;
+  --dsw-static-deepseek-400: #f25f72;
+  --dsw-static-deepseek-450: #ee4459;
+  --dsw-static-deepseek-500: #c8102e;
+  --dsw-static-deepseek-600: #a30d26;
+  --dsw-static-deepseek-700-delete: #7f0f20;
+  --dsw-static-deepseek-800: #4d0915;
+  --dsw-static-deepseek-900: #310910;
+}
+
+/* Base greys. Light mode reads the low steps (lab white), dark mode the high
+   steps (carbon black); every scale keeps the original contrast ladder.
+   `official` leaves Harness's cool bluish greys untouched. */
+html[data-rq-ui]:not([data-rq-base]) body,
+html[data-rq-ui][data-rq-base=clinical] body {
+  --dsw-static-neutral-bluish-00: #fdfdfe;
+  --dsw-static-neutral-bluish-50: #f8f8fa;
+  --dsw-static-neutral-bluish-60: #f3f3f6;
+  --dsw-static-neutral-bluish-75: #eeeff2;
+  --dsw-static-neutral-bluish-100: #e9eaee;
+  --dsw-static-neutral-bluish-150: #e3e4e9;
+  --dsw-static-neutral-bluish-200: #d9dade;
+  --dsw-static-neutral-bluish-300: #c9cad1;
+  --dsw-static-neutral-bluish-400: #adaeb7;
+  --dsw-static-neutral-bluish-500: #95969f;
+  --dsw-static-neutral-bluish-600: #7d7e88;
+  --dsw-static-neutral-bluish-700: #606169;
+  --dsw-static-neutral-bluish-750: #47484f;
+  --dsw-static-neutral-bluish-800: #393a41;
+  --dsw-static-neutral-bluish-850: #2d2e35;
+  --dsw-static-neutral-bluish-875: #25262c;
+  --dsw-static-neutral-bluish-900: #1d1e24;
+  --dsw-static-neutral-bluish-950: #17181d;
+  --dsw-static-neutral-bluish-1000: #121317;
+}
+
+html[data-rq-ui][data-rq-base=carbon] body {
+  --dsw-static-neutral-bluish-00: #fafafa;
+  --dsw-static-neutral-bluish-50: #f4f4f5;
+  --dsw-static-neutral-bluish-60: #efeff0;
+  --dsw-static-neutral-bluish-75: #eaeaeb;
+  --dsw-static-neutral-bluish-100: #e5e5e6;
+  --dsw-static-neutral-bluish-150: #dfdfdf;
+  --dsw-static-neutral-bluish-200: #d6d6d7;
+  --dsw-static-neutral-bluish-300: #c7c7c8;
+  --dsw-static-neutral-bluish-400: #a8a8a9;
+  --dsw-static-neutral-bluish-500: #909091;
+  --dsw-static-neutral-bluish-600: #787879;
+  --dsw-static-neutral-bluish-700: #5b5b5c;
+  --dsw-static-neutral-bluish-750: #434344;
+  --dsw-static-neutral-bluish-800: #353536;
+  --dsw-static-neutral-bluish-850: #2a2a2b;
+  --dsw-static-neutral-bluish-875: #232324;
+  --dsw-static-neutral-bluish-900: #1a1a1b;
+  --dsw-static-neutral-bluish-950: #151516;
+  --dsw-static-neutral-bluish-1000: #0f0f10;
+}
+
+/* The "deep diving" (thinking) label mixed the brand with navy; keep it in
+   the accent's own family instead of turning muddy. */
+html[data-rq-ui] body {
+  --dsw-alias-label-deep-diving: color-mix(in srgb, var(--dsw-static-deepseek-500) 80%, var(--dsw-static-neutral-bluish-1000));
+  --dsw-alias-label-deep-diving-shimmer: color-mix(in srgb, var(--dsw-static-deepseek-500) 32%, var(--dsw-static-neutral-bluish-00));
+}
+
+html[data-rq-ui] body[data-ds-dark-theme] {
+  --dsw-alias-label-deep-diving: color-mix(in srgb, var(--dsw-static-deepseek-400) 72%, var(--dsw-static-neutral-bluish-400));
+  --dsw-alias-label-deep-diving-shimmer: color-mix(in srgb, var(--dsw-static-deepseek-300) 60%, var(--dsw-static-deepseek-400));
+}

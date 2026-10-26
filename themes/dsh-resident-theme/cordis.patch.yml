@@ -1,0 +1,9 @@
+# 默认配置由 lib/index.js 的 Config 声明；请在插件页「配置」或 /redqueen 命令中修改。
+# 这里不要写 config：dsh 首次保存设置时会把此处整段配置复制到用户配置，导致每一项都显示为已覆盖。
+- insert:
+    - id: redqueen-splash
+      name: dsh-redqueen-splash
+
+# 本插件接管侧栏与会话页的品牌插槽；关闭或卸载本插件后官方品牌自动恢复
+- id: ui-brand-official
+  disabled: true

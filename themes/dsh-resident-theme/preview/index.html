@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>红后开屏 · 本地预览</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    background: #0b0b0e;
+    color: #ececeb;
+    font: 14px/1.6 "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  }
+  .panel {
+    position: fixed;
+    left: 16px;
+    bottom: 16px;
+    z-index: 2147483647;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    padding: 10px 12px;
+    border: 1px solid rgba(236, 235, 235, 0.16);
+    background: rgba(20, 20, 24, 0.92);
+    font-size: 12px;
+  }
+  .panel label { display: inline-flex; gap: 6px; align-items: center; color: #83838c; }
+  .panel select, .panel input {
+    background: #131317;
+    color: #ececeb;
+    border: 1px solid rgba(236, 235, 235, 0.2);
+    font: inherit;
+    padding: 2px 6px;
+  }
+  .panel input { width: 74px; }
+  .panel button {
+    background: #c8102e;
+    color: #fff;
+    border: 0;
+    font: inherit;
+    padding: 4px 14px;
+    cursor: pointer;
+  }
+  .panel button:hover { background: #ee4459; }
+  .note { max-width: 460px; text-align: center; color: #83838c; }
+  .note b { color: #ff3348; font-family: ui-monospace, Consolas, monospace; }
+</style>
+</head>
+<body>
+  <p class="note">这是 <b>lib/splash.js + lib/splash.css</b> 的本地预览。调整参数后点击重播，或按 <b>R</b>。注入 Harness 后的行为与此一致。</p>
+  <div class="panel">
+    <label>主题
+      <select id="theme">
+        <option value="auto">auto</option>
+        <option value="light">light</option>
+        <option value="dark" selected>dark</option>
+      </select>
+    </label>
+    <label>启动
+      <select id="intro">
+        <option value="hive" selected>hive · 蜂巢握手</option>
+        <option value="scan">scan · 身份扫描</option>
+        <option value="system">system · 终端引导</option>
+        <option value="lockdown">lockdown · 封锁警报</option>
+        <option value="random">random</option>
+      </select>
+    </label>
+    <label>退场
+      <select id="exit">
+        <option value="iris" selected>iris · 红后之眼</option>
+        <option value="blast">blast · 防爆门</option>
+        <option value="purge">purge · 数据清洗</option>
+        <option value="signal">signal · 信号丢失</option>
+        <option value="random">random</option>
+      </select>
+    </label>
+    <label>时长 <input id="duration" type="number" value="4000" min="0" max="15000" step="100"> ms</label>
+    <button id="replay">重播</button>
+  </div>
+  <script>
+    globalThis.__RQ_SPLASH__ = { replayOnReload: true };
+  </script>
+  <link rel="stylesheet" href="../lib/splash.css">
+  <script src="../lib/splash.js"></script>
+  <script>
+    const read = () => ({
+      theme: document.getElementById('theme').value,
+      intro: document.getElementById('intro').value,
+      exit: document.getElementById('exit').value,
+      duration: Number(document.getElementById('duration').value) || 4000,
+    });
+    const replay = () => globalThis.__redqueenSplash?.replay(read());
+    document.getElementById('replay').addEventListener('click', replay);
+    addEventListener('keydown', (event) => {
+      if (event.key === 'r' || event.key === 'R') replay();
+    });
+    // The splash auto-mounted on load; replay once with the panel's values
+    // so the selectors and the stage always agree.
+    addEventListener('load', () => setTimeout(replay, 60));
+  </script>
+</body>
+</html>

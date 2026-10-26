@@ -1,0 +1,2471 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>红后开屏 · 离线预览</title>
+<style>
+  :root { color-scheme: dark; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    background: #0b0b0e;
+    color: #ececeb;
+    font: 14px/1.6 "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  }
+  .panel {
+    position: fixed;
+    left: 16px;
+    bottom: 16px;
+    z-index: 2147483647;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    padding: 10px 12px;
+    border: 1px solid rgba(236, 235, 235, 0.16);
+    background: rgba(20, 20, 24, 0.92);
+    font-size: 12px;
+  }
+  .panel label { display: inline-flex; gap: 6px; align-items: center; color: #83838c; }
+  .panel select, .panel input {
+    background: #131317;
+    color: #ececeb;
+    border: 1px solid rgba(236, 235, 235, 0.2);
+    font: inherit;
+    padding: 2px 6px;
+  }
+  .panel input { width: 74px; }
+  .panel button {
+    background: #c8102e;
+    color: #fff;
+    border: 0;
+    font: inherit;
+    padding: 4px 14px;
+    cursor: pointer;
+  }
+  .panel button:hover { background: #ee4459; }
+  .note { max-width: 460px; text-align: center; color: #83838c; }
+  .note b { color: #ff3348; font-family: ui-monospace, Consolas, monospace; }
+</style>
+</head>
+<body>
+  <p class="note">这是 <b>lib/splash.js + lib/splash.css</b> 的本地预览。调整参数后点击重播，或按 <b>R</b>。注入 Harness 后的行为与此一致。</p>
+  <div class="panel">
+    <label>主题
+      <select id="theme">
+        <option value="auto">auto</option>
+        <option value="light">light</option>
+        <option value="dark" selected>dark</option>
+      </select>
+    </label>
+    <label>启动
+      <select id="intro">
+        <option value="hive" selected>hive · 蜂巢握手</option>
+        <option value="scan">scan · 身份扫描</option>
+        <option value="system">system · 终端引导</option>
+        <option value="lockdown">lockdown · 封锁警报</option>
+        <option value="random">random</option>
+      </select>
+    </label>
+    <label>退场
+      <select id="exit">
+        <option value="iris" selected>iris · 红后之眼</option>
+        <option value="blast">blast · 防爆门</option>
+        <option value="purge">purge · 数据清洗</option>
+        <option value="signal">signal · 信号丢失</option>
+        <option value="random">random</option>
+      </select>
+    </label>
+    <label>时长 <input id="duration" type="number" value="4000" min="0" max="15000" step="100"> ms</label>
+    <button id="replay">重播</button>
+  </div>
+  <script>
+    globalThis.__RQ_SPLASH__ = { replayOnReload: true };
+  </script>
+  <style>
+/*
+ * Red Queen splash styles for DeepSeek Harness.
+ *
+ * Every rule is scoped under #redqueen-splash; classes use the rq- prefix.
+ *
+ * Core pattern: base rules render the FINAL frame; keyframes animate FROM
+ * hidden with animation-fill-mode: both, so dropping animations (reduced
+ * motion) still yields a correct static frame. Every duration is
+ * calc(N * var(--t)) where --t = var(--rq-k) * 1ms, so the single --rq-k
+ * scalar (written by splash.js) rescales the whole authored timeline.
+ *
+ * Beat constants (timeline ms, authored for BASE_MS = 4500) — keep in sync
+ * with the BEAT block in splash.js:
+ *   --B 1280  act B start: the welcome board takes over
+ *   --G 1000  uplink beat: UPLINK ESTABLISHED has resolved
+ *   --R 2640  ready beat: every meter has landed
+ */
+
+#redqueen-splash {
+  /* time system */
+  --t: calc(var(--rq-k, 1) * 1ms);
+  --B: 1280;
+  --G: 1000;
+  --R: 2640;
+  --beat: 1.2s;
+
+  /* palette (light defaults; dark overrides below) */
+  --rq-bg: #f6f5f3;
+  --rq-ink: #17181c;
+  --rq-muted: #75757d;
+  --rq-line: rgba(23, 24, 28, 0.16);
+  --rq-line-soft: rgba(23, 24, 28, 0.08);
+  --rq-panel: rgba(255, 255, 255, 0.55);
+  --rq-hex: rgba(23, 24, 28, 0.07);
+  --rq-glow: rgba(200, 16, 46, 0.1);
+  --rq-accent-ink: #ffffff;
+  --rq-seal-paper: #ffffff;
+
+  /* fonts */
+  --rq-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --rq-sans: var(--dsw-font-family, "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif);
+
+  /* easings */
+  --e-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --e-io: cubic-bezier(0.65, 0, 0.35, 1);
+  --e-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --e-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  position: fixed;
+  inset: 0;
+  z-index: 2147483647;
+  contain: strict;
+  overflow: hidden;
+  display: block;
+  background: var(--rq-bg);
+  color: var(--rq-ink);
+  font-family: var(--rq-sans);
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+#redqueen-splash[data-theme="dark"] {
+  --rq-bg: #0b0b0e;
+  --rq-ink: #ececeb;
+  --rq-muted: #83838c;
+  --rq-line: rgba(236, 235, 235, 0.14);
+  --rq-line-soft: rgba(236, 235, 235, 0.07);
+  --rq-panel: rgba(255, 255, 255, 0.04);
+  --rq-hex: rgba(255, 51, 72, 0.08);
+  --rq-glow: rgba(255, 51, 72, 0.13);
+  --rq-accent-ink: #ffffff;
+  --rq-seal-paper: #ececeb;
+}
+
+#redqueen-splash.is-locked {
+  cursor: default;
+}
+
+/* ---- resets ---------------------------------------------------------- */
+
+#redqueen-splash,
+#redqueen-splash * {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+#redqueen-splash p,
+#redqueen-splash h1,
+#redqueen-splash ul,
+#redqueen-splash li,
+#redqueen-splash header,
+#redqueen-splash footer,
+#redqueen-splash section,
+#redqueen-splash aside,
+#redqueen-splash main {
+  display: block;
+}
+
+#redqueen-splash i,
+#redqueen-splash b {
+  font-style: normal;
+  font-weight: inherit;
+}
+
+/* ---- backdrop --------------------------------------------------------- */
+
+#redqueen-splash .rq-backdrop {
+  position: absolute;
+  inset: 0;
+}
+
+/* Honeycomb containment lattice. */
+#redqueen-splash .rq-grid {
+  position: absolute;
+  inset: -60px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 1 54.5 16v33L28 64 1.5 49V16Z M28 65 54.5 80v16' fill='none' stroke='%23808080' stroke-opacity='.5'/%3E%3C/svg%3E");
+  background-size: 56px 97px;
+  color: var(--rq-hex);
+  opacity: 0.75;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent);
+  mask-image: linear-gradient(to bottom, transparent, #000 18%, #000 82%, transparent);
+}
+
+#redqueen-splash .rq-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 62% 48% at 50% 46%, var(--rq-glow), transparent 70%);
+  animation: rq-glow-pulse var(--beat) var(--e-io) infinite;
+}
+
+/* Two containment orbit rings with a red satellite in slow revolution. */
+#redqueen-splash .rq-orbit {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  border: 1px solid var(--rq-line-soft);
+  border-radius: 50%;
+}
+
+#redqueen-splash .rq-orbit--a {
+  width: 46vw;
+  height: 46vw;
+  margin: -23vw 0 0 -23vw;
+}
+
+#redqueen-splash .rq-orbit--b {
+  width: 62vw;
+  height: 62vw;
+  margin: -31vw 0 0 -31vw;
+  border-style: dashed;
+  opacity: 0.7;
+}
+
+#redqueen-splash .rq-orbit-sat {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  width: 46vw;
+  height: 46vw;
+  margin: -23vw 0 0 -23vw;
+  animation: rq-spin 18s linear infinite;
+}
+
+#redqueen-splash .rq-orbit-sat i {
+  position: absolute;
+  left: 50%;
+  top: -3px;
+  width: 6px;
+  height: 6px;
+  margin-left: -3px;
+  border-radius: 50%;
+  background: var(--rq-accent);
+  box-shadow: 0 0 10px 2px var(--rq-glow);
+}
+
+#redqueen-splash .rq-scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.025) 0 1px,
+    transparent 1px 3px
+  );
+  mix-blend-mode: overlay;
+}
+
+#redqueen-splash .rq-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 120% 90% at 50% 50%, transparent 58%, rgba(0, 0, 0, 0.26));
+}
+
+/* ---- HUD frame --------------------------------------------------------- */
+
+#redqueen-splash .rq-corner {
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border: 2px solid var(--rq-line);
+}
+
+#redqueen-splash .rq-corner--tl { top: 22px; left: 22px; border-right: 0; border-bottom: 0; }
+#redqueen-splash .rq-corner--tr { top: 22px; right: 22px; border-left: 0; border-bottom: 0; }
+#redqueen-splash .rq-corner--bl { bottom: 22px; left: 22px; border-right: 0; border-top: 0; }
+#redqueen-splash .rq-corner--br { bottom: 22px; right: 22px; border-left: 0; border-top: 0; }
+
+/* Registration crosses at the thirds of the top edge. */
+#redqueen-splash .rq-reg {
+  position: absolute;
+  top: 34px;
+  width: 11px;
+  height: 11px;
+  opacity: 0.5;
+}
+
+#redqueen-splash .rq-reg::before,
+#redqueen-splash .rq-reg::after {
+  content: "";
+  position: absolute;
+  background: var(--rq-muted);
+}
+
+#redqueen-splash .rq-reg::before { left: 5px; top: 0; width: 1px; height: 11px; }
+#redqueen-splash .rq-reg::after { left: 0; top: 5px; width: 11px; height: 1px; }
+#redqueen-splash .rq-reg--a { left: 33%; }
+#redqueen-splash .rq-reg--b { left: 66%; }
+
+/* Punched specimen tag under the top bar, right side. */
+#redqueen-splash .rq-tag {
+  position: absolute;
+  top: 62px;
+  right: 64px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 4px 22px;
+  font-family: var(--rq-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.24em;
+  color: var(--rq-muted);
+  background: var(--rq-panel);
+  border: 1px solid var(--rq-line-soft);
+  clip-path: polygon(10px 0, 100% 0, 100% 100%, 10px 100%);
+  transform: rotate(1.2deg);
+}
+
+#redqueen-splash .rq-tag b {
+  color: var(--rq-accent);
+}
+
+#redqueen-splash .rq-tag-barcode {
+  width: 30px;
+  height: 10px;
+  color: var(--rq-muted);
+  opacity: 0.85;
+}
+
+/* A redaction bar wipes off the code once the tag has landed. */
+#redqueen-splash .rq-tag-redact {
+  position: absolute;
+  left: 22px;
+  right: 8px;
+  top: 3px;
+  bottom: 3px;
+  background: var(--rq-ink);
+  opacity: 0.85;
+}
+
+#redqueen-splash .rq-top {
+  position: absolute;
+  top: 30px;
+  left: 64px;
+  right: 64px;
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--rq-mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  color: var(--rq-muted);
+}
+
+#redqueen-splash .rq-top b {
+  color: var(--rq-accent);
+  margin: 0 0.4em;
+}
+
+#redqueen-splash .rq-top-r::before {
+  content: "●";
+  color: var(--rq-accent);
+  margin-right: 0.7em;
+  animation: rq-blink calc(var(--beat) * 2) steps(1) infinite;
+}
+
+/* Top-bar status is a three-stage swap pinned to the beats. */
+#redqueen-splash .rq-top-l::after {
+  content: "REQUESTING";
+  margin-left: 0.9em;
+  color: var(--rq-ink);
+}
+
+#redqueen-splash[data-phase="granted"] .rq-top-l::after {
+  content: "UPLINK OK";
+  color: var(--rq-accent);
+}
+
+#redqueen-splash[data-phase="ready"] .rq-top-l::after {
+  content: "READY";
+  color: var(--rq-ink);
+}
+
+/* Live facility clock, centre of the top bar. */
+#redqueen-splash .rq-clock {
+  font-variant-numeric: tabular-nums;
+  color: var(--rq-ink);
+  opacity: 0.85;
+}
+
+/* Left rail: code identity plus a deterministic hex data strip. */
+#redqueen-splash .rq-rail {
+  position: absolute;
+  left: 30px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  font-family: var(--rq-mono);
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  color: var(--rq-muted);
+  writing-mode: vertical-rl;
+}
+
+#redqueen-splash .rq-rail-id {
+  color: var(--rq-ink);
+  border-left: 2px solid var(--rq-accent);
+  padding-left: 8px;
+}
+
+#redqueen-splash .rq-rail-data {
+  opacity: 0.7;
+}
+
+#redqueen-splash .rq-bottom {
+  position: absolute;
+  bottom: 30px;
+  left: 64px;
+  right: 64px;
+  display: flex;
+  align-items: center;
+  gap: 22px;
+  font-family: var(--rq-mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  color: var(--rq-muted);
+}
+
+#redqueen-splash .rq-progress {
+  position: relative;
+  flex: 1;
+  height: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+#redqueen-splash .rq-progress::before {
+  content: "";
+  position: absolute;
+  inset: 6px 0;
+  border: 1px solid var(--rq-line-soft);
+}
+
+#redqueen-splash .rq-progress-bar {
+  position: absolute;
+  left: 1px;
+  top: 7px;
+  bottom: 7px;
+  width: calc(var(--rq-p, 0) * (100% - 2px));
+  background: var(--rq-accent);
+}
+
+#redqueen-splash .rq-progress-pct {
+  position: relative;
+  color: var(--rq-ink);
+  min-width: 40px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+#redqueen-splash .rq-hint {
+  opacity: 0.75;
+  animation: rq-hint-blink calc(var(--beat) * 3) var(--e-io) infinite;
+}
+
+/* Crawling hazard strip above the bottom bar, right side only. */
+#redqueen-splash .rq-caution {
+  position: absolute;
+  right: 64px;
+  bottom: 64px;
+  width: 26%;
+  height: 5px;
+  background: repeating-linear-gradient(-45deg, var(--rq-accent) 0 7px, transparent 7px 14px);
+  opacity: 0.55;
+}
+
+/* Bio-scope: a small observation instrument, bottom-left. */
+#redqueen-splash .rq-scope {
+  position: absolute;
+  left: 64px;
+  bottom: 64px;
+  width: 26%;
+  height: 40px;
+  border: 1px solid var(--rq-line-soft);
+  background: var(--rq-panel);
+  overflow: hidden;
+}
+
+#redqueen-splash .rq-scope-cross::before,
+#redqueen-splash .rq-scope-cross::after {
+  content: "";
+  position: absolute;
+  background: var(--rq-line);
+}
+
+#redqueen-splash .rq-scope-cross::before { left: 50%; top: 6px; bottom: 6px; width: 1px; }
+#redqueen-splash .rq-scope-cross::after { top: 50%; left: 6px; right: 6px; height: 1px; }
+
+#redqueen-splash .rq-scope-scan {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  background: var(--rq-accent);
+  opacity: 0.6;
+  animation: rq-scope-scan calc(var(--beat) * 2) var(--e-io) infinite;
+}
+
+#redqueen-splash .rq-scope-data {
+  position: absolute;
+  left: 8px;
+  top: 5px;
+  font-family: var(--rq-mono);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: var(--rq-accent);
+}
+
+#redqueen-splash .rq-scope-scale {
+  position: absolute;
+  right: 6px;
+  bottom: 5px;
+  width: 34%;
+  height: 4px;
+  background:
+    linear-gradient(to right, var(--rq-line) 1px, transparent 1px) 0 0 / 6px 100%;
+}
+
+/* Giant outlined RQ watermark — always behind the HUD text. */
+#redqueen-splash .rq-watermark {
+  position: absolute;
+  right: -14px;
+  bottom: -44px;
+  z-index: -1;
+  font-family: var(--rq-mono);
+  font-size: 240px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.04em;
+  color: transparent;
+  -webkit-text-stroke: 1px var(--rq-line-soft);
+  pointer-events: none;
+}
+
+/* ---- stage: act A (access) --------------------------------------------- */
+
+#redqueen-splash .rq-stage {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+}
+
+/* Act A is a strict sequence with NO overlap: the seal owns the stage row
+   alone, leaves it fully, then the intro variant plays in the same row.
+   Rows: 280px stage / plate / diagnostics. */
+#redqueen-splash .rq-access {
+  grid-area: 1 / 1;
+  position: relative;
+  display: grid;
+  grid-template-rows: 280px auto auto;
+  justify-items: center;
+  align-items: center;
+  row-gap: 30px;
+  width: 100%;
+}
+
+/* Permanent removal gates. is-seal-done (760ms) takes the seal out of the
+   paint tree entirely; is-actb (act B entry + handoff) hides act A for good.
+   Both classes persist through is-leaving, so no matter when the exit or a
+   skip fires, the finished act can never reappear and the two acts can
+   never share the screen. */
+#redqueen-splash.is-seal-done .rq-seal {
+  display: none;
+}
+
+#redqueen-splash.is-actb .rq-access {
+  visibility: hidden;
+}
+
+#redqueen-splash .rq-welcome {
+  visibility: hidden;
+}
+
+#redqueen-splash.is-playing .rq-welcome,
+#redqueen-splash.is-actb .rq-welcome {
+  visibility: visible;
+}
+
+#redqueen-splash.is-reduced .rq-access {
+  visibility: hidden;
+}
+
+#redqueen-splash .rq-eye {
+  position: relative;
+  width: 196px;
+  height: 196px;
+  color: var(--rq-ink);
+}
+
+#redqueen-splash .rq-eye-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+#redqueen-splash .rq-eye-spin {
+  transform-origin: 100px 100px;
+  animation: rq-spin 26s linear infinite;
+}
+
+#redqueen-splash .rq-eye-iris {
+  transform-origin: 100px 100px;
+  animation: rq-spin-reverse 52s linear infinite;
+}
+
+#redqueen-splash .rq-eye-pupil {
+  color: var(--rq-accent);
+  transform-origin: 100px 100px;
+  animation: rq-pupil var(--beat) var(--e-io) infinite;
+}
+
+#redqueen-splash .rq-eye-core {
+  animation: rq-core var(--beat) var(--e-io) infinite;
+}
+
+#redqueen-splash .rq-eye-sweep {
+  transform-origin: 100px 100px;
+}
+
+#redqueen-splash .rq-access-plate {
+  position: relative;
+  min-width: 320px;
+  text-align: center;
+  font-family: var(--rq-mono);
+  font-size: 17px;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+}
+
+#redqueen-splash .rq-access-line {
+  color: var(--rq-ink);
+  white-space: nowrap;
+  /* base state shows the grant line only; the scramble line is play-only */
+  opacity: 0;
+}
+
+#redqueen-splash .rq-access-grant {
+  position: absolute;
+  inset: 0;
+  color: var(--rq-accent);
+  white-space: nowrap;
+}
+
+#redqueen-splash .rq-sp {
+  display: inline-block;
+  width: 0.6em;
+}
+
+#redqueen-splash .rq-ch {
+  display: inline-block;
+}
+
+/* Unsettled scramble glyphs read as raw terminal noise. */
+#redqueen-splash .rq-ch[data-raw] {
+  color: var(--rq-muted);
+}
+
+#redqueen-splash .rq-diag {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 300px;
+  font-family: var(--rq-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.2em;
+  color: var(--rq-muted);
+}
+
+#redqueen-splash .rq-diag-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 30px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--rq-line-soft);
+}
+
+#redqueen-splash .rq-diag-row b {
+  color: var(--rq-ink);
+}
+
+#redqueen-splash .rq-diag-row:last-child b {
+  color: var(--rq-accent);
+}
+
+/* ---- stage: act B (welcome board) -------------------------------------- */
+
+#redqueen-splash .rq-welcome {
+  grid-area: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  text-align: center;
+}
+
+#redqueen-splash .rq-overline {
+  font-family: var(--rq-mono);
+  font-size: 11px;
+  letter-spacing: 0.6em;
+  text-indent: 0.6em;
+  color: var(--rq-accent);
+}
+
+#redqueen-splash .rq-title {
+  font-family: var(--rq-sans);
+  font-size: 46px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  line-height: 1.12;
+  max-width: 78vw;
+  text-shadow: 0 0 26px var(--rq-glow);
+}
+
+#redqueen-splash .rq-subtitle {
+  font-family: var(--rq-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.26em;
+  color: var(--rq-muted);
+  max-width: 72vw;
+}
+
+#redqueen-splash .rq-tiles {
+  position: relative;
+  display: flex;
+  gap: 14px;
+  margin-top: 12px;
+  perspective: 600px;
+}
+
+/* Guide hairline linking the tile row. */
+#redqueen-splash .rq-tiles::before {
+  content: "";
+  position: absolute;
+  left: -6%;
+  right: -6%;
+  top: 29px;
+  height: 1px;
+  background: var(--rq-line-soft);
+}
+
+#redqueen-splash .rq-tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;
+}
+
+#redqueen-splash .rq-tile-hex {
+  width: 52px;
+  height: 58px;
+  display: grid;
+  place-items: center;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: var(--rq-panel);
+  box-shadow: inset 0 0 0 1px var(--rq-line);
+}
+
+#redqueen-splash .rq-tile b {
+  font-family: var(--rq-mono);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  color: var(--rq-ink);
+}
+
+#redqueen-splash .rq-tile-label {
+  font-family: var(--rq-mono);
+  font-size: 8px;
+  letter-spacing: 0.18em;
+  color: var(--rq-muted);
+}
+
+/* The hot tile is the module the Queen hands you first. */
+#redqueen-splash .rq-tile--hot .rq-tile-hex {
+  box-shadow: inset 0 0 0 1px var(--rq-accent);
+  background: color-mix(in srgb, var(--rq-accent) 14%, var(--rq-panel));
+}
+
+#redqueen-splash .rq-tile--hot b {
+  color: var(--rq-accent);
+}
+
+#redqueen-splash .rq-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 300px;
+  margin-top: 8px;
+  font-family: var(--rq-mono);
+  font-size: 9.5px;
+  letter-spacing: 0.3em;
+  color: var(--rq-muted);
+}
+
+#redqueen-splash .rq-link-track {
+  position: relative;
+  flex: 1;
+  height: 3px;
+  background: var(--rq-line-soft);
+}
+
+#redqueen-splash .rq-link-fill {
+  position: absolute;
+  inset: 0;
+  transform-origin: left;
+  transform: scaleX(var(--rq-q, 0));
+  background: var(--rq-accent);
+  overflow: hidden;
+}
+
+/* A glint sweeps the filled meter once per beat. */
+#redqueen-splash .rq-link-fill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(105deg, transparent 20%, rgba(255, 255, 255, 0.65) 50%, transparent 80%);
+  transform: translateX(-100%);
+  animation: rq-glint var(--beat) var(--e-io) infinite;
+}
+
+/* Read head riding the meter tip. */
+#redqueen-splash .rq-link-readhead {
+  position: absolute;
+  top: -3px;
+  width: 2px;
+  height: 9px;
+  background: var(--rq-accent);
+  left: calc(var(--rq-q, 0) * 100%);
+}
+
+/* The famous whisper, flickering in just before the exit. */
+#redqueen-splash .rq-whisper {
+  position: absolute;
+  left: 50%;
+  bottom: clamp(56px, 13%, 150px);
+  transform: translateX(-50%);
+  font-family: var(--rq-mono);
+  font-size: 11px;
+  letter-spacing: 0.42em;
+  white-space: nowrap;
+  color: var(--rq-accent);
+  opacity: 0.62;
+  text-shadow: 0 0 12px var(--rq-glow);
+  animation: rq-whisper calc(var(--beat) * 2) steps(3) infinite;
+}
+
+/* ---- timeline bindings --------------------------------------------------
+ * Delays reference the beat constants; per-glyph staggering travels via the
+ * inline --i custom property written by spell()/template(). */
+
+/* Peripheral HUD sweeps in clockwise from the top-left corner. */
+#redqueen-splash.is-playing .rq-corner { animation: rq-corner-in calc(560 * var(--t)) var(--e-out) both; }
+#redqueen-splash.is-playing .rq-corner--tr { animation-delay: calc(90 * var(--t)); }
+#redqueen-splash.is-playing .rq-corner--bl { animation-delay: calc(150 * var(--t)); }
+#redqueen-splash.is-playing .rq-corner--br { animation-delay: calc(230 * var(--t)); }
+
+#redqueen-splash.is-playing .rq-top { animation: rq-fade-down calc(600 * var(--t)) var(--e-out) both; }
+#redqueen-splash.is-playing .rq-reg { animation: rq-fade calc(400 * var(--t)) var(--e-out) calc(700 * var(--t)) both; }
+#redqueen-splash.is-playing .rq-tag { animation: rq-tag-in calc(480 * var(--t)) var(--e-pop) calc(640 * var(--t)) both; }
+#redqueen-splash.is-playing .rq-rail { animation: rq-fade calc(600 * var(--t)) var(--e-out) calc(420 * var(--t)) both; }
+#redqueen-splash.is-playing .rq-bottom { animation: rq-fade-up calc(600 * var(--t)) var(--e-out) calc(520 * var(--t)) both; }
+#redqueen-splash.is-playing .rq-caution { animation: rq-fade calc(500 * var(--t)) var(--e-out) calc(760 * var(--t)) both; }
+#redqueen-splash.is-playing .rq-scope { animation: rq-fade-up calc(500 * var(--t)) var(--e-out) calc(880 * var(--t)) both; }
+#redqueen-splash.is-playing .rq-orbit,
+#redqueen-splash.is-playing .rq-orbit-sat { animation: rq-fade calc(900 * var(--t)) var(--e-out) calc(900 * var(--t)) both; }
+#redqueen-splash.is-playing .rq-orbit-sat { animation: rq-fade calc(900 * var(--t)) var(--e-out) calc(900 * var(--t)) both, rq-spin 18s linear infinite; }
+#redqueen-splash.is-playing .rq-tag-redact {
+  animation: rq-fade calc(360 * var(--t)) var(--e-io) calc(1000 * var(--t)) reverse both;
+}
+#redqueen-splash.is-playing .rq-grid {
+  animation: rq-grid-in calc(1100 * var(--t)) var(--e-io) both,
+    rq-grid-pan 90s linear infinite;
+}
+#redqueen-splash.is-playing .rq-watermark { animation: rq-watermark-in calc(1800 * var(--t)) var(--e-out) calc(var(--R) * var(--t)) both; }
+#redqueen-splash.is-playing .rq-hint {
+  animation: rq-fade calc(400 * var(--t)) var(--e-out) calc(1700 * var(--t)) both,
+    rq-hint-blink calc(var(--beat) * 3) var(--e-io) calc(2100 * var(--t)) infinite;
+}
+
+/* The eye wakes, the sweep ring runs one lap, then hands over. */
+#redqueen-splash.is-playing .rq-eye { animation: rq-eye-in calc(700 * var(--t)) var(--e-out) both; }
+#redqueen-splash.is-playing .rq-eye-sweep {
+  animation: rq-sweep calc(760 * var(--t)) var(--e-io) calc(1050 * var(--t)) both;
+}
+#redqueen-splash.is-playing .rq-access-line .rq-ch {
+  animation: rq-glyph-in calc(340 * var(--t)) var(--e-out) calc((300 + var(--i) * 14) * var(--t)) both;
+}
+#redqueen-splash.is-playing .rq-access-line {
+  animation: rq-access-line-in calc(200 * var(--t)) both calc(300 * var(--t)),
+    rq-access-out calc(320 * var(--t)) var(--e-io) calc((var(--G) + 60) * var(--t)) both;
+}
+#redqueen-splash.is-playing .rq-access-grant .rq-ch {
+  animation: rq-glyph-in calc(300 * var(--t)) var(--e-out) calc((var(--G) + var(--i) * 22) * var(--t)) both;
+}
+#redqueen-splash.is-playing .rq-diag-row {
+  animation: rq-diag-in calc(420 * var(--t)) var(--e-out) calc((var(--G) + 140 + var(--i) * 150) * var(--t)) both;
+}
+
+/* Act A leaves the shared cell BEFORE act B enters it — no cross-fade. */
+#redqueen-splash.is-playing .rq-access {
+  animation: rq-access-handoff calc(420 * var(--t)) var(--e-io) calc(var(--B) * var(--t)) both;
+}
+#redqueen-splash.is-playing .rq-welcome {
+  animation: rq-welcome-in calc(560 * var(--t)) var(--e-out) calc((var(--B) + 400) * var(--t)) both;
+}
+#redqueen-splash.is-playing .rq-overline { animation: rq-fade calc(400 * var(--t)) var(--e-out) calc((var(--B) + 500) * var(--t)) both; }
+#redqueen-splash.is-playing .rq-title .rq-ch {
+  animation: rq-glyph-in calc(380 * var(--t)) var(--e-out) calc((var(--B) + 560 + var(--i) * 22) * var(--t)) both;
+}
+#redqueen-splash.is-playing .rq-subtitle { animation: rq-fade-up calc(480 * var(--t)) var(--e-out) calc((var(--B) + 980) * var(--t)) both; }
+#redqueen-splash.is-playing .rq-tile-hex {
+  animation: rq-tile-in calc(420 * var(--t)) var(--e-pop) calc((var(--R) - 820 + var(--i) * 80) * var(--t)) both;
+  transform-origin: left center;
+}
+#redqueen-splash.is-playing .rq-tile-label {
+  animation: rq-fade calc(300 * var(--t)) var(--e-out) calc((var(--R) - 640 + var(--i) * 80) * var(--t)) both;
+}
+#redqueen-splash.is-playing .rq-link { animation: rq-fade-up calc(420 * var(--t)) var(--e-out) calc((var(--R) - 700) * var(--t)) both; }
+#redqueen-splash.is-playing .rq-whisper { animation-name: rq-whisper-in, rq-whisper; animation-duration: calc(700 * var(--t)), calc(var(--beat) * 2); animation-delay: calc((var(--R) + 240) * var(--t)), calc((var(--R) + 240) * var(--t) + 700 * var(--t)); animation-fill-mode: both, none; animation-timing-function: var(--e-out), steps(3); animation-iteration-count: 1, infinite; }
+
+/* ---- futuristic chrome: seal, floor, sweep bar, intro variants ---------- */
+
+/* The seal owns the stage row alone, then leaves it empty for the intro
+   variant — the two are never on screen at the same time. Base state is
+   hidden (the final frame shows the variant); animations reveal it. */
+#redqueen-splash .rq-seal {
+  grid-area: 1 / 1;
+  width: 240px;
+  height: 240px;
+  opacity: 0;
+  color: var(--rq-ink);
+  filter: drop-shadow(0 0 18px var(--rq-glow));
+  pointer-events: none;
+}
+
+#redqueen-splash .rq-seal-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+#redqueen-splash .rq-wedge--accent { fill: var(--rq-accent); }
+#redqueen-splash .rq-wedge--paper { fill: var(--rq-seal-paper); stroke: var(--rq-line); stroke-width: 0.6; }
+
+/* Every act-A actor (seal, eye, radar, boot log, alert band) lives in the
+   same stage cell — only one is ever on screen at a time. */
+#redqueen-splash .rq-eye,
+#redqueen-splash .rq-radar,
+#redqueen-splash .rq-boot,
+#redqueen-splash .rq-alert {
+  grid-area: 1 / 1;
+}
+
+#redqueen-splash .rq-access-plate {
+  grid-area: 2 / 1;
+}
+
+#redqueen-splash .rq-diag,
+#redqueen-splash .rq-bio {
+  grid-area: 3 / 1;
+}
+
+/* Perspective holo-floor: the lab grid falling away towards the viewer. */
+#redqueen-splash .rq-floor {
+  position: absolute;
+  left: -32%;
+  right: -32%;
+  bottom: -8%;
+  height: 44%;
+  background:
+    linear-gradient(to right, var(--rq-hex) 1px, transparent 1px) 0 0 / 58px 100%,
+    linear-gradient(to top, var(--rq-hex) 1px, transparent 1px) 0 0 / 100% 42px;
+  transform: perspective(520px) rotateX(58deg);
+  transform-origin: 50% 100%;
+  -webkit-mask-image: linear-gradient(to top, #000 26%, transparent 92%);
+  mask-image: linear-gradient(to top, #000 26%, transparent 92%);
+  opacity: 0.55;
+}
+
+/* A holographic scan band travelling down the whole stage, bright leading line. */
+#redqueen-splash .rq-sweepbar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 96px;
+  background: linear-gradient(to bottom, transparent, var(--rq-glow) 76%, transparent);
+  opacity: 0;
+  transform: translateY(-12vh);
+}
+
+#redqueen-splash .rq-sweepbar::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--rq-accent);
+  opacity: 0.35;
+}
+
+/* The access plate reads as backlit glass with accent corner ticks. */
+#redqueen-splash .rq-access-plate {
+  position: relative;
+  min-width: 320px;
+  padding: 15px 28px;
+  text-align: center;
+  font-family: var(--rq-mono);
+  font-size: 17px;
+  letter-spacing: 0.34em;
+  text-transform: uppercase;
+  background: var(--rq-panel);
+  border: 1px solid var(--rq-line-soft);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+#redqueen-splash .rq-access-plate::before,
+#redqueen-splash .rq-access-plate::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+}
+
+#redqueen-splash .rq-access-plate::before {
+  top: -1px;
+  left: -1px;
+  border-top: 2px solid var(--rq-accent);
+  border-left: 2px solid var(--rq-accent);
+}
+
+#redqueen-splash .rq-access-plate::after {
+  right: -1px;
+  bottom: -1px;
+  border-right: 2px solid var(--rq-accent);
+  border-bottom: 2px solid var(--rq-accent);
+}
+
+/* Subtle hologram flicker over the eye. */
+#redqueen-splash .rq-eye-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  animation: rq-holo calc(var(--beat) * 5) steps(1) infinite;
+}
+
+/* scan intro: radar rings and sweep around the eye, biometric meters. */
+#redqueen-splash .rq-radar {
+  position: relative;
+  width: 196px;
+  height: 196px;
+}
+
+#redqueen-splash .rq-radar .rq-eye {
+  position: absolute;
+  inset: 0;
+}
+
+#redqueen-splash .rq-radar-sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(from 0deg, var(--rq-accent), transparent 72deg);
+  opacity: 0.16;
+  -webkit-mask-image: radial-gradient(circle, #000 0 60%, transparent 66%);
+  mask-image: radial-gradient(circle, #000 0 60%, transparent 66%);
+}
+
+#redqueen-splash .rq-radar-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid var(--rq-accent);
+  opacity: 0;
+}
+
+#redqueen-splash .rq-bio {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 300px;
+  font-family: var(--rq-mono);
+  font-size: 10.5px;
+  letter-spacing: 0.2em;
+  color: var(--rq-muted);
+}
+
+#redqueen-splash .rq-bio-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+#redqueen-splash .rq-bio-row span {
+  min-width: 76px;
+}
+
+#redqueen-splash .rq-bio-row i {
+  position: relative;
+  flex: 1;
+  height: 3px;
+  background: var(--rq-line-soft);
+  overflow: hidden;
+}
+
+/* Biometric meters ride the same --rq-q meter as the uplink bar. */
+#redqueen-splash .rq-bio-row i::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--rq-accent);
+  transform-origin: left;
+  transform: scaleX(var(--rq-q, 0));
+}
+
+/* system intro: the boot log panel. */
+#redqueen-splash .rq-boot {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 348px;
+  padding: 16px 22px;
+  font-family: var(--rq-mono);
+  font-size: 11.5px;
+  letter-spacing: 0.08em;
+  color: var(--rq-muted);
+  background: var(--rq-panel);
+  border: 1px solid var(--rq-line-soft);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+}
+
+#redqueen-splash .rq-boot-line b {
+  color: var(--rq-accent);
+  margin-right: 0.5em;
+}
+
+#redqueen-splash .rq-boot-line:last-of-type {
+  color: var(--rq-accent);
+}
+
+#redqueen-splash .rq-boot-cursor {
+  width: 8px;
+  height: 14px;
+  background: var(--rq-accent);
+  opacity: 0;
+}
+
+/* lockdown intro: hazard stripes and a flashing WARNING band. */
+#redqueen-splash .rq-alert {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+
+#redqueen-splash .rq-alert b {
+  font-family: var(--rq-mono);
+  font-size: 22px;
+  letter-spacing: 0.5em;
+  text-indent: 0.5em;
+  color: var(--rq-accent);
+  text-shadow: 0 0 18px var(--rq-glow);
+}
+
+#redqueen-splash .rq-alert-stripes {
+  width: 92px;
+  height: 14px;
+  background: repeating-linear-gradient(-45deg, var(--rq-accent) 0 8px, transparent 8px 16px);
+}
+
+#redqueen-splash .rq-alert-stripes--r {
+  transform: scaleX(-1);
+}
+
+/* Strict handoff, no overlap: the seal owns the stage row first and is
+   fully gone at 760ms; the intro variant appears at 800ms. */
+#redqueen-splash.is-playing .rq-seal {
+  animation: rq-seal-in calc(400 * var(--t)) var(--e-out) both,
+    rq-seal-out calc(300 * var(--t)) var(--e-io) calc(460 * var(--t)) both;
+}
+#redqueen-splash.is-playing .rq-wedge {
+  animation: rq-seal-wedge calc(220 * var(--t)) var(--e-out) calc(var(--i) * 50 * var(--t)) both;
+}
+/* In hive and scan the eye takes the stage row only after the seal left. */
+#redqueen-splash[data-intro="hive"].is-playing .rq-eye,
+#redqueen-splash[data-intro="scan"].is-playing .rq-eye {
+  animation-delay: calc(800 * var(--t));
+}
+/* The plate (row 2) joins once the seal is leaving; text rows never stack. */
+#redqueen-splash.is-playing .rq-access-plate {
+  animation: rq-fade calc(360 * var(--t)) var(--e-out) calc(480 * var(--t)) both;
+}
+#redqueen-splash.is-playing .rq-floor { animation: rq-fade calc(900 * var(--t)) var(--e-out) both; }
+#redqueen-splash.is-playing .rq-sweepbar { animation: rq-sweepbar calc(var(--beat) * 3) linear infinite; }
+#redqueen-splash.is-playing .rq-radar {
+  animation: rq-eye-in calc(700 * var(--t)) var(--e-out) calc(800 * var(--t)) both;
+}
+#redqueen-splash.is-playing .rq-radar-sweep { animation: rq-spin 1.8s linear infinite; }
+#redqueen-splash.is-playing .rq-radar-ring {
+  animation: rq-radar-ring var(--beat) linear calc(var(--i) * var(--beat) / 3 + 800 * var(--t)) infinite;
+}
+#redqueen-splash.is-playing .rq-bio-row {
+  animation: rq-diag-in calc(420 * var(--t)) var(--e-out) calc((820 + var(--i) * 140) * var(--t)) both;
+}
+#redqueen-splash.is-playing .rq-boot {
+  animation: rq-fade-up calc(480 * var(--t)) var(--e-out) calc(800 * var(--t)) both;
+}
+#redqueen-splash.is-playing .rq-boot-line {
+  animation: rq-diag-in calc(300 * var(--t)) var(--e-out) calc((820 + var(--i) * 150) * var(--t)) both;
+}
+#redqueen-splash.is-playing .rq-boot-cursor {
+  animation: rq-fade calc(200 * var(--t)) var(--e-out) calc(1800 * var(--t)) both,
+    rq-cursor calc(var(--beat)) steps(1) calc(2000 * var(--t)) infinite;
+}
+#redqueen-splash.is-playing .rq-alert {
+  animation: rq-fade-up calc(480 * var(--t)) var(--e-out) calc(800 * var(--t)) both;
+}
+#redqueen-splash.is-playing .rq-alert-stripes { animation: rq-stripes calc(var(--beat)) linear infinite; }
+#redqueen-splash.is-playing .rq-alert b { animation: rq-blink var(--beat) steps(1) infinite; }
+
+/* ---- exit layers -------------------------------------------------------- */
+
+#redqueen-splash .rq-exits {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+#redqueen-splash .rq-exits > * {
+  display: none;
+}
+
+/* Leaving hands the frame over to the real interface: the root goes
+   transparent and the whole board powers down while the exit overlay plays,
+   so every exit ends by revealing the app instead of popping to it. */
+#redqueen-splash.is-leaving {
+  pointer-events: none;
+  background: transparent;
+}
+
+#redqueen-splash.is-leaving .rq-backdrop,
+#redqueen-splash.is-leaving .rq-hud,
+#redqueen-splash.is-leaving .rq-stage {
+  animation: rq-fade calc(240 * var(--t)) var(--e-io) both;
+}
+
+/* fade fallback */
+#redqueen-splash[data-exit="fade"].is-leaving {
+  animation: rq-root-fade calc(280 * var(--t)) var(--e-io) both;
+}
+
+/* wipe: the board is one sealed sheet. It stays fully opaque — hiding the
+   app completely — until its top edge starts descending; eight bands then
+   collapse top-down in sequence and the app appears band by band. The sheet
+   sits at the bottom of the root's stacking context so act B stays visible
+   on top of it while it fades, and the bands alone occlude the client. */
+#redqueen-splash .rq-wipe {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+}
+
+#redqueen-splash .rq-wipe i {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--i) * 12.5%);
+  height: 12.6%;
+  background: linear-gradient(to bottom, var(--rq-bg), color-mix(in srgb, var(--rq-ink) 4%, var(--rq-bg)));
+  box-shadow: inset 0 -1px 0 var(--rq-line-soft);
+}
+
+#redqueen-splash[data-exit="wipe"].is-leaving .rq-wipe { display: block; }
+#redqueen-splash[data-exit="wipe"].is-leaving .rq-wipe i {
+  animation: rq-wipe-band calc(460 * var(--t)) var(--e-in) calc((240 + var(--i) * 55) * var(--t)) both;
+}
+
+/* blast doors: a red seam splits the frame horizontally. Each half carries a
+   200%-height pseudo-layer of the hex lattice so the grid stays continuous
+   across the seam and reads as the real screen surface parting. */
+#redqueen-splash .rq-blast-half {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 50.25%;
+  box-shadow: 0 0 34px rgba(0, 0, 0, 0.5);
+}
+
+#redqueen-splash .rq-blast-half::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: calc(100% / 0.5025);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='97' viewBox='0 0 56 97'%3E%3Cpath d='M28 1 54.5 16v33L28 64 1.5 49V16Z M28 65 54.5 80v16' fill='none' stroke='%23808080' stroke-opacity='.5'/%3E%3C/svg%3E");
+  background-size: 56px 97px;
+  opacity: 0.75;
+}
+
+#redqueen-splash .rq-blast-half--t::before { top: 0; }
+#redqueen-splash .rq-blast-half--b::before { bottom: 0; }
+
+/* Sheened metal doors with a hot accent edge on the parting line. */
+#redqueen-splash .rq-blast-half--t {
+  top: 0;
+  background: linear-gradient(to bottom, var(--rq-bg) 55%, color-mix(in srgb, var(--rq-ink) 8%, var(--rq-bg)));
+  border-bottom: 2px solid var(--rq-accent);
+}
+
+#redqueen-splash .rq-blast-half--b {
+  bottom: 0;
+  background: linear-gradient(to top, var(--rq-bg) 55%, color-mix(in srgb, var(--rq-ink) 8%, var(--rq-bg)));
+  border-top: 2px solid var(--rq-accent);
+}
+
+#redqueen-splash .rq-blast-seam {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 3px;
+  margin-top: -1.5px;
+  background: var(--rq-accent);
+  box-shadow: 0 0 24px 4px var(--rq-accent);
+  transform: scaleX(0);
+}
+
+#redqueen-splash[data-exit="blast"].is-leaving .rq-blast { display: block; }
+#redqueen-splash[data-exit="blast"].is-leaving .rq-blast-seam {
+  animation: rq-seam calc(130 * var(--t)) var(--e-io) both,
+    rq-fade calc(300 * var(--t)) var(--e-io) calc(440 * var(--t)) reverse both;
+}
+#redqueen-splash[data-exit="blast"].is-leaving .rq-blast-half--t {
+  animation: rq-door-up calc(560 * var(--t)) var(--e-in) calc(120 * var(--t)) both;
+}
+#redqueen-splash[data-exit="blast"].is-leaving .rq-blast-half--b {
+  animation: rq-door-down calc(560 * var(--t)) var(--e-in) calc(120 * var(--t)) both;
+}
+
+/* signal loss: the live stage is torn into cloned, aberrated slices */
+#redqueen-splash .rq-signal i {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 14.3%;
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--rq-ink) 0 1px,
+    transparent 1px 3px
+  );
+  opacity: 0;
+}
+
+#redqueen-splash .rq-signal i:nth-child(odd) { background: var(--rq-accent); }
+
+/* Slices cut from the live stage (built by signalExit in splash.js). */
+#redqueen-splash .rq-signal-slice {
+  position: absolute;
+  left: 0;
+  right: 0;
+  overflow: hidden;
+  z-index: 5;
+  filter: drop-shadow(-2px 0 rgba(255, 51, 72, 0.55)) drop-shadow(2px 0 rgba(126, 178, 255, 0.3));
+  opacity: 0;
+}
+
+#redqueen-splash .rq-signal-slice > * {
+  will-change: transform;
+}
+
+#redqueen-splash[data-exit="signal"].is-leaving .rq-signal { display: block; }
+#redqueen-splash[data-exit="signal"].is-leaving .rq-signal i {
+  animation: rq-signal-flicker calc(180 * var(--t)) steps(2) infinite;
+}
+#redqueen-splash[data-exit="signal"].is-leaving .rq-signal-slice {
+  display: block;
+  animation: rq-signal-slice calc(180 * var(--t)) steps(2) calc(var(--i) * 55 * var(--t)) infinite;
+}
+#redqueen-splash[data-exit="signal"].is-leaving .rq-signal i:nth-child(2) { top: 9%; animation-delay: calc(40 * var(--t)); }
+#redqueen-splash[data-exit="signal"].is-leaving .rq-signal i:nth-child(3) { top: 26%; animation-delay: calc(90 * var(--t)); }
+#redqueen-splash[data-exit="signal"].is-leaving .rq-signal i:nth-child(4) { top: 43%; }
+#redqueen-splash[data-exit="signal"].is-leaving .rq-signal i:nth-child(5) { top: 58%; animation-delay: calc(60 * var(--t)); }
+#redqueen-splash[data-exit="signal"].is-leaving .rq-signal i:nth-child(6) { top: 74%; animation-delay: calc(120 * var(--t)); }
+#redqueen-splash[data-exit="signal"].is-leaving .rq-signal i:nth-child(7) { top: 88%; animation-delay: calc(20 * var(--t)); }
+#redqueen-splash[data-exit="signal"].is-leaving .rq-stage {
+  animation: rq-signal-jitter calc(90 * var(--t)) steps(2) infinite;
+}
+#redqueen-splash[data-exit="signal"].is-leaving {
+  animation: rq-root-fade calc(220 * var(--t)) var(--e-io) calc(420 * var(--t)) both;
+}
+
+/* iris: she shuts her eye, then the aperture reopens onto the real app */
+@property --rq-iris-h {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+#redqueen-splash .rq-iris-exit {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  /* spotlight dim rather than a flat blackout */
+  background: radial-gradient(ellipse 62% 48% at 50% 50%, #050506 30%, #000 78%);
+  opacity: 0;
+  z-index: 6;
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent calc(var(--rq-iris-h) * 120% - 12%), #000 calc(var(--rq-iris-h) * 120% - 6%));
+  mask-image: radial-gradient(circle at 50% 50%, transparent calc(var(--rq-iris-h) * 120% - 12%), #000 calc(var(--rq-iris-h) * 120% - 6%));
+}
+
+/* Pings: expanding hexagons, echoing the hive lattice. */
+#redqueen-splash .rq-iris-ping {
+  position: absolute;
+  width: 300px;
+  height: 300px;
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: color-mix(in srgb, var(--rq-accent) 26%, transparent);
+  opacity: 0;
+}
+
+#redqueen-splash .rq-iris-core {
+  width: 300px;
+  height: 300px;
+  color: var(--rq-accent);
+}
+
+#redqueen-splash[data-exit="iris"].is-leaving .rq-iris-exit {
+  display: grid;
+  /* one timeline: prime to black (26%), then the pupil dilates open */
+  animation: rq-iris-run calc(950 * var(--t)) var(--e-io) both;
+}
+#redqueen-splash[data-exit="iris"].is-leaving .rq-iris-core {
+  animation: rq-iris-core calc(900 * var(--t)) var(--e-io) both;
+}
+#redqueen-splash[data-exit="iris"].is-leaving .rq-iris-ping {
+  animation: rq-radar-ring var(--beat) linear calc(260 * var(--t) + var(--i) * var(--beat) / 2) infinite;
+}
+
+/* purge: canvas painted by splash.js; it dissolves as the wipe finishes */
+#redqueen-splash .rq-purge {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 5;
+}
+
+#redqueen-splash[data-exit="purge"].is-leaving .rq-purge { display: block; }
+#redqueen-splash[data-exit="purge"].is-leaving .rq-purge {
+  animation: rq-purge-fade calc(300 * var(--t)) var(--e-io) calc(640 * var(--t)) both;
+}
+
+/* ---- reduced motion ------------------------------------------------------
+ * Base rules already depict the final frame; just drop every animation. */
+
+#redqueen-splash.is-reduced *,
+#redqueen-splash.is-reduced {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* ---- responsive ---------------------------------------------------------- */
+
+@media (max-width: 880px) {
+  #redqueen-splash .rq-rail,
+  #redqueen-splash .rq-watermark,
+  #redqueen-splash .rq-diag,
+  #redqueen-splash .rq-bio,
+  #redqueen-splash .rq-tag,
+  #redqueen-splash .rq-caution,
+  #redqueen-splash .rq-reg,
+  #redqueen-splash .rq-scope,
+  #redqueen-splash .rq-orbit,
+  #redqueen-splash .rq-orbit-sat,
+  #redqueen-splash .rq-clock {
+    display: none;
+  }
+  #redqueen-splash .rq-access { grid-template-rows: 220px auto auto; row-gap: 22px; }
+  #redqueen-splash .rq-title { font-size: 34px; }
+  #redqueen-splash .rq-eye,
+  #redqueen-splash .rq-radar { width: 150px; height: 150px; }
+  #redqueen-splash .rq-seal { width: 190px; height: 190px; }
+  #redqueen-splash .rq-top,
+  #redqueen-splash .rq-bottom { left: 30px; right: 30px; }
+  #redqueen-splash .rq-top-r { display: none; }
+  #redqueen-splash .rq-boot { min-width: 0; }
+}
+
+@media (max-width: 560px) {
+  #redqueen-splash .rq-access { grid-template-rows: 170px auto auto; row-gap: 16px; }
+  #redqueen-splash .rq-eye,
+  #redqueen-splash .rq-radar { width: 120px; height: 120px; }
+  #redqueen-splash .rq-seal { width: 150px; height: 150px; }
+  #redqueen-splash .rq-title { font-size: 26px; letter-spacing: 0.02em; }
+  #redqueen-splash .rq-tiles { gap: 9px; }
+  #redqueen-splash .rq-tile { width: 40px; height: 45px; }
+  #redqueen-splash .rq-subtitle { letter-spacing: 0.14em; }
+  #redqueen-splash .rq-whisper { letter-spacing: 0.2em; white-space: normal; text-align: center; width: 84vw; }
+}
+
+@media (max-height: 620px) {
+  #redqueen-splash .rq-access { grid-template-rows: 200px auto auto; row-gap: 14px; }
+  #redqueen-splash .rq-eye,
+  #redqueen-splash .rq-radar { width: 120px; height: 120px; }
+  #redqueen-splash .rq-seal { width: 150px; height: 150px; }
+  #redqueen-splash .rq-welcome { gap: 14px; }
+  #redqueen-splash .rq-whisper { bottom: clamp(48px, 8%, 120px); }
+}
+
+/* ---- keyframes ------------------------------------------------------------ */
+
+@keyframes rq-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes rq-fade-down { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+@keyframes rq-fade-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+@keyframes rq-root-fade { to { opacity: 0; } }
+
+@keyframes rq-corner-in {
+  from { opacity: 0; transform: scale(0.4); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes rq-grid-in {
+  from { opacity: 0; transform: scale(1.05); }
+  to { opacity: 0.75; transform: none; }
+}
+
+@keyframes rq-glow-pulse {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
+}
+
+@keyframes rq-blink {
+  0%, 60% { opacity: 1; }
+  61%, 100% { opacity: 0.25; }
+}
+
+@keyframes rq-hint-blink {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 0.3; }
+}
+
+@keyframes rq-spin { to { transform: rotate(360deg); } }
+@keyframes rq-spin-reverse { to { transform: rotate(-360deg); } }
+
+@keyframes rq-pupil {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(0.9); }
+}
+
+@keyframes rq-core {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 0.45; }
+}
+
+@keyframes rq-sweep {
+  0% { stroke-dashoffset: 40; opacity: 0; }
+  12% { opacity: 1; }
+  88% { opacity: 1; }
+  100% { stroke-dashoffset: -500; opacity: 0; }
+}
+
+@keyframes rq-eye-in {
+  from { opacity: 0; transform: scale(0.9); filter: blur(3px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+
+@keyframes rq-glyph-in {
+  from { opacity: 0; transform: translateY(0.45em); filter: blur(2px); }
+  to { opacity: 1; transform: none; filter: none; }
+}
+
+@keyframes rq-access-out {
+  to { opacity: 0; filter: blur(4px); }
+}
+
+@keyframes rq-diag-in {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes rq-access-handoff {
+  to { opacity: 0; transform: scale(0.94); }
+}
+
+@keyframes rq-welcome-in {
+  from { opacity: 0; transform: scale(1.03); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes rq-tile-in {
+  from { opacity: 0; transform: rotateY(-80deg); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes rq-glint {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
+@keyframes rq-grid-pan {
+  from { background-position: 0 0; }
+  to { background-position: 56px 97px; }
+}
+
+@keyframes rq-watermark-in {
+  from { opacity: 0; transform: translateX(4vw); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes rq-tag-in {
+  from { opacity: 0; transform: rotate(6deg) translateY(-6px); }
+  to { opacity: 1; transform: rotate(1.2deg); }
+}
+
+@keyframes rq-scope-scan {
+  0% { top: 0; opacity: 0; }
+  15% { opacity: 0.6; }
+  85% { opacity: 0.6; }
+  100% { top: calc(100% - 2px); opacity: 0; }
+}
+
+@keyframes rq-whisper-in {
+  0% { opacity: 0; }
+  30% { opacity: 0.7; }
+  45% { opacity: 0.1; }
+  60% { opacity: 0.62; }
+  100% { opacity: 0.62; }
+}
+
+@keyframes rq-whisper {
+  0%, 100% { opacity: 0.62; }
+  50% { opacity: 0.35; }
+}
+
+@keyframes rq-seam {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes rq-door-up { to { transform: translateY(-101%); } }
+@keyframes rq-door-down { to { transform: translateY(101%); } }
+
+@keyframes rq-wipe-band {
+  from { clip-path: inset(0 0 0 0); }
+  to { clip-path: inset(100% 0 0 0); }
+}
+
+@keyframes rq-signal-slice {
+  0%, 100% { opacity: 0; transform: translateX(0); }
+  20% { opacity: 0.9; transform: translateX(-9px) skewX(-2deg); }
+  45% { opacity: 0.35; transform: translateX(6px); }
+  70% { opacity: 0.85; transform: translateX(-4px) skewX(1.5deg); }
+}
+
+@keyframes rq-signal-flicker {
+  0%, 100% { opacity: 0; }
+  20% { opacity: 0.5; }
+  45% { opacity: 0.1; }
+  70% { opacity: 0.65; }
+}
+
+@keyframes rq-signal-jitter {
+  0% { clip-path: inset(0 0 0 0); transform: none; }
+  25% { clip-path: inset(6% 0 3% 0); transform: translateX(-6px); }
+  50% { clip-path: inset(0 0 8% 0); transform: translateX(5px); }
+  75% { clip-path: inset(4% 0 0 0); transform: translateX(-3px); }
+  100% { clip-path: inset(0 0 0 0); transform: none; }
+}
+
+@keyframes rq-iris-run {
+  0% { opacity: 0; --rq-iris-h: 0; }
+  26% { opacity: 1; --rq-iris-h: 0; }
+  92% { opacity: 1; }
+  100% { opacity: 0; --rq-iris-h: 1.12; }
+}
+
+@keyframes rq-purge-fade {
+  to { opacity: 0; }
+}
+
+@keyframes rq-iris-core {
+  0% { opacity: 0; transform: scale(0.8); }
+  26% { opacity: 1; transform: scale(1); }
+  34% { opacity: 1; transform: scale(1.07); filter: drop-shadow(0 0 26px var(--rq-accent)); }
+  44% { transform: scale(1); filter: none; }
+  100% { opacity: 0; transform: scale(1.5); }
+}
+
+@keyframes rq-seal-in {
+  from { opacity: 0; transform: scale(0.88) rotate(-14deg); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes rq-seal-out {
+  to { opacity: 0; transform: scale(0.94); filter: blur(2px); }
+}
+
+@keyframes rq-seal-wedge {
+  from { opacity: 0; }
+}
+
+@keyframes rq-access-line-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes rq-radar-ring {
+  from { transform: scale(0.55); opacity: 0.75; }
+  to { transform: scale(1.28); opacity: 0; }
+}
+
+@keyframes rq-cursor {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+@keyframes rq-stripes {
+  to { background-position: 22.63px 0; }
+}
+
+@keyframes rq-sweepbar {
+  from { transform: translateY(-12vh); opacity: 0; }
+  12% { opacity: 0.55; }
+  88% { opacity: 0.55; }
+  to { transform: translateY(112vh); opacity: 0; }
+}
+
+@keyframes rq-holo {
+  0%, 95.4%, 96.6%, 100% { opacity: 1; }
+  96% { opacity: 0.82; }
+  98.2% { opacity: 0.9; }
+}
+
+  </style>
+  <script>
+/**
+ * Red Queen splash for DeepSeek Harness — injected body script.
+ *
+ * Runs before the harness shell boots: mounts a fixed overlay, plays the
+ * boot sequence (uplink handshake → welcome board), then leaves once the
+ * shell has rendered. Pure self-contained script, no imports.
+ *
+ * Conventions: elements `rq-*`, states `is-playing/is-leaving/is-reduced`,
+ * keyframes `rq-*`, custom properties `--rq-*`. The beat block below must
+ * stay in sync with the `--B/--G/--R` constants in splash.css.
+ */
+(() => {
+  const doc = document;
+  const ID = 'redqueen-splash';
+  const BASE_MS = 4500;
+  const REDUCED_HOLD_MS = 700;
+  const FADE_MS = 280;
+
+  // Timeline beats (ms on the BASE_MS timeline); keep in sync with splash.css.
+  // `done` is the moment act B has fully landed: the client UI is never
+  // revealed before it, whatever the configured duration.
+  const BEAT = { b: 1280, uplink: 1000, grid: 2040, welcome: 2360, ready: 2640, done: 2800 };
+  // Loading % follows the same beats instead of a free-running curve.
+  const PROGRESS = [[0, 0], [300, 0.05], [BEAT.uplink, 0.24], [BEAT.grid, 0.56], [BEAT.welcome, 0.8], [BEAT.ready, 0.97]];
+  // The uplink meter under the module tiles runs from the grid to ready.
+  const LINK = [[BEAT.grid, 0], [BEAT.welcome, 0.55], [BEAT.ready, 0.97]];
+
+  const EXITS = {
+    wipe: { ms: 1100 }, // opaque curtain lifts top-down, app appears band by band
+    blast: { ms: 700 },
+    purge: { ms: 950, run: purgeExit },
+    signal: { ms: 640, run: signalExit },
+    iris: { ms: 950 }, // 240 ms prime + 700 ms aperture
+  };
+
+  // Boot intro variants, rotated like the exits (`intro: 'random'` never
+  // repeats the previous one). All share the seal → grant → welcome flow.
+  const INTROS = {
+    hive: { scramble: 'ESTABLISHING UPLINK', grant: 'UPLINK ESTABLISHED', build: hiveExtras },
+    scan: { scramble: 'IDENTITY SCAN', grant: 'IDENTITY VERIFIED', build: scanExtras },
+    system: { scramble: 'BOOT SEQUENCE', grant: 'ALL SYSTEMS NOMINAL', build: systemExtras },
+    lockdown: { scramble: 'CONTAINMENT CHECK', grant: 'CONTAINMENT SECURE', build: lockdownExtras },
+  };
+
+  const DEFAULTS = {
+    title: 'DEEPSEEK HARNESS',
+    subtitle: 'RED QUEEN MAINFRAME · SECURITY & SURVEILLANCE DIVISION',
+    code: 'RQ-DSH/0.1',
+    whisper: 'YOU ARE ALL GOING TO DIE DOWN HERE.',
+    accentLight: '#c8102e',
+    accentDark: '#ff3348',
+    theme: 'auto',
+    exit: 'wipe',
+    intro: 'random',
+    duration: 4000,
+    maxWait: 8000,
+    skippable: true,
+    replayOnReload: false,
+  };
+
+  const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
+
+  /** Per-segment ease-in-out, so every meter leg glides instead of linear. */
+  const easeInOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - ((-2 * x + 2) ** 3) / 2);
+
+  /** Value of a piecewise-eased curve `[fromMs, to01]` at `ms`. */
+  function along(curve, ms) {
+    if (ms <= curve[0][0]) return curve[0][1];
+    for (let i = 1; i < curve.length; i++) {
+      const [to, value] = curve[i];
+      const [from, previous] = curve[i - 1];
+      if (ms <= to) {
+        const span = to - from || 1;
+        return previous + (value - previous) * easeInOut((ms - from) / span);
+      }
+    }
+    return curve[curve.length - 1][1];
+  }
+
+  /** Storage helpers that never throw (private mode, quota, disabled). */
+  const store = {
+    get(key) { try { return window.localStorage.getItem(key); } catch { return null; } },
+    set(key, value) { try { window.localStorage.setItem(key, value); } catch { /* ignore */ } },
+    sessionGet(key) { try { return window.sessionStorage.getItem(key); } catch { return null; } },
+    sessionSet(key, value) { try { window.sessionStorage.setItem(key, value); } catch { /* ignore */ } },
+  };
+
+  /** Random exit that never repeats the previous one. */
+  function pickExit() {
+    const names = Object.keys(EXITS);
+    const last = store.get('redqueen-splash:last-exit');
+    const pool = names.filter((name) => name !== last);
+    const pick = pool[Math.floor(Math.random() * pool.length)] || names[0];
+    store.set('redqueen-splash:last-exit', pick);
+    return pick;
+  }
+
+  /** Random boot intro that never repeats the previous one. */
+  function pickIntro() {
+    const names = Object.keys(INTROS);
+    const last = store.get('redqueen-splash:last-intro');
+    const pool = names.filter((name) => name !== last);
+    const pick = pool[Math.floor(Math.random() * pool.length)] || names[0];
+    store.set('redqueen-splash:last-intro', pick);
+    return pick;
+  }
+
+  /** FNV-1a over a string, seeding the hex data strip. */
+  function fnv1a(text) {
+    let hash = 0x811c9dc5;
+    for (let i = 0; i < text.length; i++) {
+      hash ^= text.charCodeAt(i);
+      hash = Math.imul(hash, 0x01000193) >>> 0;
+    }
+    return hash >>> 0;
+  }
+
+  /** Deterministic hex byte strip derived from the code string. */
+  function hexStrip(code) {
+    let state = fnv1a(code) || 1;
+    const next = () => {
+      state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+      return state;
+    };
+    const bytes = Array.from({ length: 12 }, () => (next() & 0xff).toString(16).padStart(2, '0'));
+    return bytes.join('').replace(/(.{8})/g, '$1 ').trim();
+  }
+
+  /** Deterministic barcode for the specimen tag, seeded by the code string. */
+  function barcodeSvg(code) {
+    const bars = Array.from({ length: 24 }, (_, i) => {
+      const hash = fnv1a(`${code}:${i}`);
+      return `<rect x="${i * 4}" y="0" width="${1 + (hash % 3)}" height="10" fill="currentColor"/>`;
+    }).join('');
+    return `<svg class="rq-tag-barcode" viewBox="0 0 96 10" preserveAspectRatio="none" aria-hidden="true">${bars}</svg>`;
+  }
+
+  /** Escape user-editable text before inline interpolation. */
+  function esc(text) {
+    return String(text).replace(/[&<>"]/g, (ch) => ({
+      '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;',
+    }[ch]));
+  }
+
+  /** Split text into per-glyph spans so CSS can stagger and scramble them. */
+  function spell(text) {
+    return [...String(text)].map((ch, i) => ch === ' '
+      ? '<i class="rq-sp"> </i>'
+      : `<i class="rq-ch" style="--i:${i}" data-final="${esc(ch)}">${esc(ch)}</i>`)
+      .join('');
+  }
+
+  /** Radial iris spokes for the eye emblem. */
+  function spokes(count, radiusInner, radiusOuter) {
+    const points = [];
+    for (let i = 0; i < count; i++) {
+      const angle = (Math.PI * 2 * i) / count - Math.PI / 2;
+      const cos = Math.cos(angle);
+      const sin = Math.sin(angle);
+      points.push(`M${(100 + radiusInner * cos).toFixed(2)} ${(100 + radiusInner * sin).toFixed(2)}`
+        + `L${(100 + radiusOuter * cos).toFixed(2)} ${(100 + radiusOuter * sin).toFixed(2)}`);
+    }
+    return points.join('');
+  }
+
+  /** The Queen's eye: segmented outer ring, iris spokes, red pupil. */
+  function eyeSvg(uid) {
+    return `<svg class="rq-eye-svg" viewBox="0 0 200 200" fill="none" aria-hidden="true">
+      <g class="rq-eye-spin">
+        <circle cx="100" cy="100" r="94" stroke="currentColor" stroke-width="1" stroke-dasharray="1.2 7.4" opacity=".5"/>
+        <circle cx="100" cy="100" r="86" stroke="currentColor" stroke-width="2.4" stroke-dasharray="72 468" opacity=".9"/>
+      </g>
+      <g class="rq-eye-iris">
+        <circle cx="100" cy="100" r="58" stroke="currentColor" stroke-width="1.6"/>
+        <circle cx="100" cy="100" r="52" stroke="currentColor" stroke-width=".8" opacity=".55" stroke-dasharray="2 4.2"/>
+        <path d="${spokes(16, 30, 52)}" stroke="currentColor" stroke-width="1.1" opacity=".8"/>
+      </g>
+      <circle class="rq-eye-pupil" cx="100" cy="100" r="24" fill="currentColor"/>
+      <circle cx="100" cy="100" r="24" stroke="var(--rq-bg,#0b0b0e)" stroke-width="2" opacity=".35"/>
+      <circle class="rq-eye-core" cx="100" cy="100" r="7" fill="var(--rq-bg,#0b0b0e)"/>
+      <circle class="rq-eye-sweep" cx="100" cy="100" r="86" stroke="var(--rq-accent,#ff3348)" stroke-width="3"
+        stroke-dasharray="40 500" stroke-dashoffset="40" opacity="0"/>
+    </svg>`;
+  }
+
+  /**
+   * The lab-company seal: an octagon of eight alternating red / white
+   * sectors meeting at the centre — an original vector rendering of the
+   * protective-umbrella mark. Sectors light up in sequence, then the intro
+   * variant takes the stage.
+   */
+  function sealSvg() {
+    const pt = (r, deg) => {
+      const a = ((deg - 90) * Math.PI) / 180;
+      return `${(100 + r * Math.cos(a)).toFixed(2)} ${(100 + r * Math.sin(a)).toFixed(2)}`;
+    };
+    const wedges = Array.from({ length: 8 }, (_, i) => {
+      const a = pt(82, 22.5 + i * 45);
+      const b = pt(82, 22.5 + (i + 1) * 45);
+      return `<path class="rq-wedge ${i % 2 ? 'rq-wedge--paper' : 'rq-wedge--accent'}" style="--i:${i}"
+        d="M100 100 L${a} L${b} Z"/>`;
+    }).join('');
+    const frame = Array.from({ length: 8 }, (_, i) => pt(84, 22.5 + i * 45)).join(' ');
+    return `<svg class="rq-seal-svg" viewBox="0 0 200 200" fill="none" aria-hidden="true">
+      <circle cx="100" cy="100" r="96" stroke="currentColor" stroke-width="1" stroke-dasharray="1.2 7.4" opacity=".45"/>
+      <circle cx="100" cy="100" r="90" stroke="currentColor" stroke-width="1.6" opacity=".8"/>
+      <polygon points="${frame}" stroke="var(--rq-line,#444)" stroke-width="1.2"/>
+      ${wedges}
+    </svg>`;
+  }
+
+  /** hive: the eye wakes over the containment diagnostics. */
+  function hiveExtras(uid) {
+    return `
+      <div class="rq-eye">${eyeSvg(uid)}</div>
+      <ul class="rq-diag">
+        <li class="rq-diag-row" style="--i:0"><span>HIVE INTEGRITY</span><b>STABLE</b></li>
+        <li class="rq-diag-row" style="--i:1"><span>CONTAINMENT FIELD</span><b>SECURE</b></li>
+        <li class="rq-diag-row" style="--i:2"><span>RED QUEEN CORE</span><b>ONLINE</b></li>
+      </ul>`;
+  }
+
+  /** scan: biometric rings under a rotating radar sweep. */
+  function scanExtras(uid) {
+    return `
+      <div class="rq-radar">
+        <div class="rq-radar-sweep"></div>
+        <i class="rq-radar-ring" style="--i:0"></i>
+        <i class="rq-radar-ring" style="--i:1"></i>
+        <i class="rq-radar-ring" style="--i:2"></i>
+        <div class="rq-eye">${eyeSvg(uid)}</div>
+      </div>
+      <ul class="rq-bio">
+        <li class="rq-bio-row" style="--i:0"><span>RETINA</span><i></i></li>
+        <li class="rq-bio-row" style="--i:1"><span>GAIT</span><i></i></li>
+        <li class="rq-bio-row" style="--i:2"><span>VOICE</span><i></i></li>
+      </ul>`;
+  }
+
+  /** system: a terminal boot log typing itself out. */
+  function systemExtras() {
+    const lines = [
+      'UMBRELLA OS 9.3.1 // RED QUEEN HOST',
+      'LOADING HIVE MODULES ......... OK',
+      'MEMORY INTEGRITY ............. OK',
+      'SECTOR 7 UPLINK .............. OK',
+      'PURGE PROTOCOL ........... ARMED',
+    ];
+    return `
+      <div class="rq-boot">
+        ${lines.map((line, i) => `<span class="rq-boot-line" style="--i:${i}"><b>&gt;</b> ${esc(line)}</span>`).join('')}
+        <span class="rq-boot-cursor"></span>
+      </div>`;
+  }
+
+  /** lockdown: hazard stripes and a flashing WARNING band. */
+  function lockdownExtras() {
+    return `
+      <div class="rq-alert">
+        <i class="rq-alert-stripes"></i>
+        <b>WARNING</b>
+        <i class="rq-alert-stripes rq-alert-stripes--r"></i>
+      </div>`;
+  }
+
+  /** Tile hexagon codes for the welcome board: [code, caption]. */
+  const TILES = [['RN', 'RENDER'], ['SB', 'SIDEBAR'], ['SS', 'SESSION'], ['CM', 'COMMAND'], ['UI', 'MODULE']];
+
+  function template(cfg, variant) {
+    const uid = Math.random().toString(36).slice(2, 7);
+    return `
+      <div class="rq-backdrop" aria-hidden="true">
+        <div class="rq-grid"></div>
+        <div class="rq-floor"></div>
+        <i class="rq-orbit rq-orbit--a"></i>
+        <i class="rq-orbit rq-orbit--b"></i>
+        <i class="rq-orbit-sat"><i></i></i>
+        <div class="rq-glow"></div>
+        <div class="rq-scanlines"></div>
+        <div class="rq-sweepbar"></div>
+        <div class="rq-vignette"></div>
+      </div>
+      <div class="rq-hud" aria-hidden="true">
+        <i class="rq-corner rq-corner--tl"></i><i class="rq-corner rq-corner--tr"></i>
+        <i class="rq-corner rq-corner--bl"></i><i class="rq-corner rq-corner--br"></i>
+        <i class="rq-reg rq-reg--a"></i><i class="rq-reg rq-reg--b"></i>
+        <header class="rq-top">
+          <span class="rq-top-l">RED QUEEN <b>//</b> MAINFRAME</span>
+          <span class="rq-clock">--:--:--</span>
+          <span class="rq-top-r">SECTOR 7 · SECURITY &amp; SURVEILLANCE</span>
+        </header>
+        <span class="rq-tag"><i class="rq-tag-redact"></i>${barcodeSvg(cfg.code)}<b>SPECIMEN</b> ${esc(cfg.code)}</span>
+        <aside class="rq-rail">
+          <span class="rq-rail-id">${esc(cfg.code)}</span>
+          <span class="rq-rail-data">${hexStrip(cfg.code)}</span>
+        </aside>
+        <i class="rq-caution"></i>
+        <div class="rq-scope">
+          <i class="rq-scope-cross"></i>
+          <i class="rq-scope-scan"></i>
+          <span class="rq-scope-data">BIO-SIGN 98.2</span>
+          <i class="rq-scope-scale"></i>
+        </div>
+        <footer class="rq-bottom">
+          <span class="rq-bottom-code">${esc(cfg.code)}</span>
+          <span class="rq-progress"><i class="rq-progress-bar"></i><b class="rq-progress-pct">00%</b></span>
+          <span class="rq-hint">CLICK TO SKIP</span>
+        </footer>
+        <span class="rq-watermark">RQ</span>
+      </div>
+      <main class="rq-stage">
+        <section class="rq-access">
+          <div class="rq-seal" aria-hidden="true">${sealSvg()}</div>
+          ${variant.build(uid)}
+          <div class="rq-access-plate">
+            <p class="rq-access-line" data-scramble>${spell(variant.scramble)}</p>
+            <p class="rq-access-grant">${spell(variant.grant)}</p>
+          </div>
+        </section>
+        <section class="rq-welcome">
+          <p class="rq-overline">WELCOME TO</p>
+          <h1 class="rq-title">${spell(cfg.title)}</h1>
+          <p class="rq-subtitle">${esc(cfg.subtitle)}</p>
+          <div class="rq-tiles">
+            ${TILES.map(([tile, label], i) => `<span class="rq-tile${i === 0 ? ' rq-tile--hot' : ''}" style="--i:${i}"><span class="rq-tile-hex"><b>${tile}</b></span><i class="rq-tile-label">${label}</i></span>`).join('')}
+          </div>
+          <div class="rq-link"><span class="rq-link-label">UPLINK</span><i class="rq-link-track"><i class="rq-link-fill"></i><b class="rq-link-readhead"></b></i></div>
+        </section>
+        ${cfg.whisper ? `<p class="rq-whisper">${esc(cfg.whisper)}</p>` : ''}
+      </main>
+      <div class="rq-exits" aria-hidden="true">
+        <div class="rq-wipe">${Array.from({ length: 8 }, (_, i) => `<i style="--i:${i}"></i>`).join('')}</div>
+        <div class="rq-blast"><i class="rq-blast-seam"></i><i class="rq-blast-half rq-blast-half--t"></i><i class="rq-blast-half rq-blast-half--b"></i></div>
+        <div class="rq-signal"><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        <div class="rq-iris-exit"><i class="rq-iris-ping" style="--i:0"></i><i class="rq-iris-ping" style="--i:1"></i><div class="rq-iris-core">${eyeSvg(uid + 'x')}</div></div>
+        <canvas class="rq-purge"></canvas>
+      </div>`;
+  }
+
+  /** Signal loss: the live stage is torn into offset, aberrated slices. */
+  function signalExit(root) {
+    try {
+      const stage = root.querySelector('.rq-stage');
+      const layer = root.querySelector('.rq-signal');
+      if (!stage || !layer) return;
+      const height = root.clientHeight;
+      const width = root.clientWidth;
+      if (!width || !height) return;
+      const rows = 6;
+      for (let i = 0; i < rows; i++) {
+        const topPct = (i / rows) * 100;
+        const slice = doc.createElement('i');
+        slice.className = 'rq-signal-slice';
+        slice.style.top = `${topPct}%`;
+        slice.style.height = `${100 / rows + 0.4}%`;
+        slice.style.setProperty('--i', String(i));
+        const clone = stage.cloneNode(true);
+        clone.style.cssText = `position:absolute;left:0;width:100%;height:${height}px;top:${(-topPct / 100) * height}px;`;
+        slice.appendChild(clone);
+        layer.appendChild(slice);
+      }
+    } catch { /* the flicker stripes alone still sell the effect */ }
+  }
+
+  /** Character purge: the board dissolves into hex, then wipes away. */
+  function purgeExit(root, exitMs) {
+    try {
+      const canvas = root.querySelector('.rq-purge');
+      if (!canvas || !canvas.getContext) return;
+      const context = canvas.getContext('2d');
+      const ratio = Math.min(window.devicePixelRatio || 1, 2);
+      const width = root.clientWidth;
+      const height = root.clientHeight;
+      if (!width || !height) return;
+      canvas.width = Math.round(width * ratio);
+      canvas.height = Math.round(height * ratio);
+      context.scale(ratio, ratio);
+
+      const size = 14;
+      const columns = Math.ceil(width / size);
+      const rows = Math.ceil(height / size);
+      const glyphs = '0123456789ABCDEF';
+      const accent = root.style.getPropertyValue('--rq-accent').trim() || '#ff3348';
+      // Ragged clear front: base sweep plus two sine wobbles, per column.
+      const front = (x) => {
+        const u = x / Math.max(columns - 1, 1);
+        return clamp(0.48 + 0.34 * u
+          + Math.sin(u * Math.PI * 3.1) * 0.05
+          + Math.sin(u * 11.7) * 0.022, 0.48, 0.99);
+      };
+      // Per-cell state: cached glyph re-rolled every ~70ms, own alpha.
+      const cells = Array.from({ length: columns * rows }, () => ({
+        glyph: glyphs[(Math.random() * glyphs.length) | 0],
+        born: 0,
+        alpha: 0.35 + Math.random() * 0.4,
+      }));
+      const started = performance.now();
+      const draw = (now) => {
+        const t = clamp((now - started) / exitMs, 0, 1);
+        context.clearRect(0, 0, width, height);
+        context.font = '11px ui-monospace, Consolas, monospace';
+        // Phase 1 (0–0.45): the screen crystallises into hex characters.
+        // Phase 2: the ragged front erases it, accent cells riding the edge.
+        const fill = clamp(t / 0.45, 0, 1);
+        const visibleColumns = Math.ceil(columns * easeInOut(fill));
+        for (let x = 0; x < visibleColumns; x++) {
+          if (t >= front(x)) continue;
+          const near = t >= front(x) - 0.07;
+          for (let y = 0; y < rows; y++) {
+            const cell = cells[y * columns + x];
+            if (now - cell.born > 70) {
+              cell.glyph = glyphs[(Math.random() * glyphs.length) | 0];
+              cell.born = now;
+            }
+            context.globalAlpha = near ? 0.95 : cell.alpha;
+            context.fillStyle = near || (x + y) % 9 === 0 ? accent : 'rgb(150,150,158)';
+            context.fillText(cell.glyph, x * size, y * size + size);
+          }
+        }
+        context.globalAlpha = 1;
+        if (t < 1) requestAnimationFrame(draw);
+      };
+      requestAnimationFrame(draw);
+    } catch { /* the fade-out below still removes the splash */ }
+  }
+
+  /** Resolve `theme: auto` the way the host renders it. */
+  function pickTheme(cfg) {
+    if (cfg.theme === 'dark' || cfg.theme === 'light') return cfg.theme;
+    const body = doc.body;
+    if (body && body.dataset.dsThemeSource !== undefined) {
+      return body.dataset.dsDarkTheme !== undefined ? 'dark' : 'light';
+    }
+    try {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    } catch {
+      return 'dark';
+    }
+  }
+
+  function mount(overrides = {}) {
+    if (!doc.body || doc.getElementById(ID)) return;
+    const cfg = Object.assign({}, DEFAULTS, globalThis.__RQ_SPLASH__ || {}, overrides);
+    if (cfg.enabled === false) return;
+
+    const reduced = cfg.reducedMotion === true || (() => {
+      try { return window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch { return false; }
+    })();
+    const exitName = reduced ? 'fade' : (EXITS[cfg.exit] ? cfg.exit : pickExit());
+    const exitMs = reduced ? FADE_MS : EXITS[exitName].ms;
+    const introName = reduced ? 'hive' : (INTROS[cfg.intro] ? cfg.intro : pickIntro());
+    const variant = INTROS[introName];
+    const speed = clamp((cfg.duration || 0) / BASE_MS, 0.45, 2);
+
+    const root = doc.createElement('div');
+    root.id = ID;
+    root.className = 'rq-root';
+    root.dataset.theme = pickTheme(cfg);
+    root.dataset.exit = exitName;
+    root.dataset.intro = introName;
+    root.setAttribute('aria-hidden', 'true');
+    root.style.setProperty('--rq-accent', root.dataset.theme === 'dark' ? cfg.accentDark : cfg.accentLight);
+    root.style.setProperty('--rq-k', String(speed));
+    root.innerHTML = template(cfg, variant);
+    doc.body.appendChild(root);
+
+    // ---- per-frame meters -------------------------------------------------
+    let progress = 0;
+    let link = 0;
+    let rafId = 0;
+    const pct = root.querySelector('.rq-progress-pct');
+    const tick = (now) => {
+      if (left) { rafId = 0; return; }
+      const elapsed = (now - startedAt) / speed;
+      progress = along(PROGRESS, elapsed);
+      link = along(LINK, elapsed);
+      if (elapsed > BEAT.ready) {
+        const creep = clamp((elapsed - BEAT.ready) / 4000, 0, 1);
+        progress = 0.97 + creep * 0.02;
+        link = 0.97 + creep * 0.02;
+      }
+      root.style.setProperty('--rq-p', progress.toFixed(4));
+      root.style.setProperty('--rq-q', link.toFixed(4));
+      if (pct) pct.textContent = `${String(Math.round(progress * 100)).padStart(3, '0')}%`;
+      // Semantic phase for the top-bar status swap (CSS reads data-phase).
+      const phase = elapsed < BEAT.uplink ? 'requesting' : elapsed < BEAT.ready ? 'granted' : 'ready';
+      if (root.dataset.phase !== phase) root.dataset.phase = phase;
+      rafId = requestAnimationFrame(tick);
+    };
+
+    // ---- glyph scramble ---------------------------------------------------
+    let scrambleTimer = 0;
+    const startScramble = () => {
+      const glyphs = 'ABCDEFGHKMNPRSTUVWXYZ023456789#/\\|<>+=';
+      const targets = [...root.querySelectorAll('.rq-access-line .rq-ch')];
+      if (!targets.length) return;
+      const totalMs = (BEAT.uplink - 420) * speed - 100;
+      const started = performance.now();
+      // Per-glyph settle moments with jitter; unsettled glyphs tint raw.
+      const settleAt = targets.map((_, i) => (i / targets.length) * totalMs + Math.random() * 120);
+      let lastFlick = 0;
+      scrambleTimer = window.setInterval(() => {
+        const now = performance.now();
+        const elapsed = now - started;
+        let anyRaw = false;
+        targets.forEach((target, i) => {
+          if (elapsed >= settleAt[i]) {
+            if (target.textContent !== target.dataset.final) target.textContent = target.dataset.final;
+            if (target.dataset.raw) delete target.dataset.raw;
+          } else {
+            target.dataset.raw = '1';
+            anyRaw = true;
+            if (now - lastFlick >= 45) {
+              target.textContent = glyphs[(Math.random() * glyphs.length) | 0];
+            }
+          }
+        });
+        if (now - lastFlick >= 45) lastFlick = now;
+        if (!anyRaw) {
+          window.clearInterval(scrambleTimer);
+          scrambleTimer = 0;
+          targets.forEach((target) => {
+            target.textContent = target.dataset.final;
+            if (target.dataset.raw) delete target.dataset.raw;
+          });
+        }
+      }, 48);
+    };
+
+    // ---- lifecycle --------------------------------------------------------
+    let startedAt = 0;
+    let left = false;
+    let destroyed = false;
+    let timers = [];
+    let observer = null;
+    let railTimer = 0;
+    let clockTimer = 0;
+
+    const later = (fn, ms) => timers.push(window.setTimeout(fn, ms));
+
+    const appReady = () => {
+      const app = doc.getElementById('root');
+      return app === null || app.childElementCount > 0;
+    };
+
+    const destroy = () => {
+      if (destroyed) return;
+      destroyed = true;
+      timers.forEach((timer) => window.clearTimeout(timer));
+      timers = [];
+      if (scrambleTimer) window.clearInterval(scrambleTimer);
+      if (railTimer) window.clearInterval(railTimer);
+      if (clockTimer) window.clearInterval(clockTimer);
+      if (rafId) cancelAnimationFrame(rafId);
+      if (observer) observer.disconnect();
+      globalThis.removeEventListener('keydown', onKey, true);
+      root.remove();
+    };
+
+    const leave = () => {
+      if (left) return;
+      left = true;
+      root.classList.remove('is-playing');
+      root.classList.add('is-leaving');
+      // Complete both meters with one short eased lerp as the frame powers down.
+      const fromP = progress;
+      const fromQ = link;
+      const t0 = performance.now();
+      const finish = (now) => {
+        if (destroyed) return;
+        const k = clamp((now - t0) / 200, 0, 1);
+        const e = easeInOut(k);
+        root.style.setProperty('--rq-p', (fromP + (1 - fromP) * e).toFixed(4));
+        root.style.setProperty('--rq-q', (fromQ + (1 - fromQ) * e).toFixed(4));
+        if (k < 1) requestAnimationFrame(finish);
+      };
+      requestAnimationFrame(finish);
+      let name = exitName;
+      if (!reduced && EXITS[exitName]?.run) {
+        try { EXITS[exitName].run(root, EXITS[exitName].ms); }
+        catch { name = 'fade'; root.dataset.exit = 'fade'; }
+      }
+      later(destroy, (name === 'fade' ? FADE_MS : EXITS[exitName].ms) + 60);
+    };
+
+    function onKey(event) {
+      if (event.key === 'Escape' || event.key === 'Enter' || event.key === ' ') leave();
+    }
+
+    const exitWhenReady = () => {
+      if (appReady()) return leave();
+      const app = doc.getElementById('root');
+      if (!app) return leave();
+      observer = new MutationObserver(() => { if (appReady()) leave(); });
+      observer.observe(app, { childList: true });
+    };
+
+    const begin = () => {
+      startedAt = performance.now();
+      root.classList.add('is-playing');
+      rafId = requestAnimationFrame(tick);
+      later(startScramble, 350 * speed);
+      // The rail strip streams deterministic hex; the scope read-out and the
+      // clock tick alongside, so the frame never sits still.
+      if (!reduced) {
+        const railData = root.querySelector('.rq-rail-data');
+        const scopeData = root.querySelector('.rq-scope-data');
+        if (railData || scopeData) {
+          let railTick = 0;
+          railTimer = window.setInterval(() => {
+            railTick += 1;
+            if (railData) railData.textContent = hexStrip(`${cfg.code}:${railTick}`);
+            if (scopeData) scopeData.textContent = `BIO-SIGN 9${7 + (railTick % 3)}.${(railTick * 7) % 10}`;
+          }, 600);
+        }
+        const clockEl = root.querySelector('.rq-clock');
+        if (clockEl) {
+          const tickClock = () => {
+            const d = new Date();
+            const pad = (v) => String(v).padStart(2, '0');
+            clockEl.textContent = `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+          };
+          tickClock();
+          clockTimer = window.setInterval(tickClock, 1000);
+        }
+      }
+      const exitAt = Math.max(cfg.duration - exitMs, 600, BEAT.done * speed);
+      // Once the seal is done it leaves the paint tree for good; once act B
+      // has entered, act A is hidden permanently. Neither can reappear when
+      // is-playing drops at exit time, so the two acts never share the screen.
+      later(() => root.classList.add('is-seal-done'), 760 * speed);
+      later(() => root.classList.add('is-actb'), (BEAT.b + 420) * speed);
+      later(exitWhenReady, exitAt);
+      const hardCap = Math.max(cfg.maxWait || 0, exitAt);
+      later(leave, hardCap);
+      later(destroy, hardCap + exitMs + 2000);
+      if (cfg.skippable === false) root.classList.add('is-locked');
+    };
+
+    if (cfg.skippable !== false) {
+      root.addEventListener('pointerdown', leave);
+      globalThis.addEventListener('keydown', onKey, true);
+    }
+
+    if (doc.visibilityState === 'visible') {
+      begin();
+    } else {
+      const onVisible = () => {
+        if (doc.visibilityState !== 'visible') return;
+        doc.removeEventListener('visibilitychange', onVisible);
+        globalThis.removeEventListener('focus', onVisible);
+        window.clearTimeout(fallbackTimer);
+        if (!destroyed && !left) begin();
+      };
+      const fallbackTimer = window.setTimeout(onVisible, 2500);
+      doc.addEventListener('visibilitychange', onVisible);
+      globalThis.addEventListener('focus', onVisible);
+    }
+
+    store.sessionSet('redqueen-splash:played', '1');
+    return root;
+  }
+
+  if (store.sessionGet('redqueen-splash:played') !== '1'
+    || globalThis.__RQ_SPLASH__?.replayOnReload === true) {
+    mount();
+  }
+
+  globalThis.__redqueenSplash = {
+    replay(options = {}) {
+      doc.getElementById(ID)?.remove();
+      return mount(Object.assign({ replayOnReload: true }, options));
+    },
+  };
+})();
+
+</script>
+  <script>
+    const read = () => ({
+      theme: document.getElementById('theme').value,
+      intro: document.getElementById('intro').value,
+      exit: document.getElementById('exit').value,
+      duration: Number(document.getElementById('duration').value) || 4000,
+    });
+    const replay = () => globalThis.__redqueenSplash?.replay(read());
+    document.getElementById('replay').addEventListener('click', replay);
+    addEventListener('keydown', (event) => {
+      if (event.key === 'r' || event.key === 'R') replay();
+    });
+    // The splash auto-mounted on load; replay once with the panel's values
+    // so the selectors and the stage always agree.
+    addEventListener('load', () => setTimeout(replay, 60));
+  </script>
+</body>
+</html>

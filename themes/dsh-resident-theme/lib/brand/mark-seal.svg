@@ -1,0 +1,12 @@
+<svg viewBox="0 0 48 48" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+  <circle cx="24" cy="24" r="22.6" stroke="currentColor" stroke-width="1" stroke-dasharray="0.7 2.546" opacity=".45"/>
+  <path d="M24 24 31.68 5.16 42.5 16.48Z" style="fill:var(--dsw-static-deepseek-500,#c8102e)"/>
+  <path d="M24 24 42.5 16.48 42.5 31.56Z" fill="currentColor"/>
+  <path d="M24 24 42.5 31.56 31.68 42.84Z" style="fill:var(--dsw-static-deepseek-500,#c8102e)"/>
+  <path d="M24 24 31.68 42.84 16.32 42.84Z" fill="currentColor"/>
+  <path d="M24 24 16.32 42.84 5.5 31.56Z" style="fill:var(--dsw-static-deepseek-500,#c8102e)"/>
+  <path d="M24 24 5.5 31.56 5.5 16.48Z" fill="currentColor"/>
+  <path d="M24 24 5.5 16.48 16.32 5.16Z" style="fill:var(--dsw-static-deepseek-500,#c8102e)"/>
+  <path d="M24 24 16.32 5.16 31.68 5.16Z" fill="currentColor"/>
+  <polygon points="32.04,4.6 43.4,15.96 43.4,32.04 32.04,43.4 15.96,43.4 4.6,32.04 4.6,15.96 15.96,4.6" stroke="currentColor" stroke-width="1.1"/>
+</svg>

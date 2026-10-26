@@ -1,0 +1,72 @@
+{
+  "name": "dsh-redqueen-splash",
+  "description": "红后开屏动画 — DeepSeek Harness 红后主题：开屏动画、界面配色与品牌标志",
+  "version": "0.3.0",
+  "private": true,
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Neriah-Ado/dsh-resident-theme.git"
+  },
+  "homepage": "https://github.com/Neriah-Ado/dsh-resident-theme#readme",
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-bundle",
+    "splash-screen",
+    "resident-evil",
+    "red-queen"
+  ],
+  "type": "module",
+  "main": "lib/index.js",
+  "icon": "./icon.svg",
+  "exports": {
+    ".": "./lib/index.js",
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*.json": "./locale/*.json",
+    "./client": "./lib/client.js"
+  },
+  "files": [
+    "lib/index.js",
+    "lib/splash.css",
+    "lib/splash.js",
+    "cordis.patch.yml",
+    "icon.svg",
+    "locale/*.json",
+    "lib/client.js",
+    "lib/theme.css",
+    "lib/brand/*",
+    "preview/*"
+  ],
+  "scripts": {
+    "test": "node scripts/test-host.mjs",
+    "preview": "python -m http.server 4173",
+    "preview:build": "node scripts/build-preview.mjs"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-plugin-manager",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-commands",
+        "@deepseek-ai/dsh-client-locale"
+      ]
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/schemastery": "^3.18.0"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/schemastery": {
+      "optional": true
+    }
+  }
+}

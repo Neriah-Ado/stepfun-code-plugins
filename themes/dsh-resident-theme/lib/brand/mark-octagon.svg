@@ -1,0 +1,6 @@
+<svg viewBox="0 0 48 48" width="100%" height="100%" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" focusable="false">
+  <path d="M16.5 3H31.5L43.5 16.5V31.5L31.5 45H16.5L4.5 31.5V16.5Z" fill="currentColor"/>
+  <path d="M35 3H43.5V11.5Z" style="fill:var(--dsw-static-deepseek-500,#c8102e)"/>
+  <circle cx="24" cy="24" r="9.4" style="stroke:var(--dsw-alias-bg-base,#fff)" stroke-width="3.4"/>
+  <circle cx="24" cy="24" r="3.4" style="fill:var(--dsw-static-deepseek-500,#c8102e)"/>
+</svg>

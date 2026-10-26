@@ -1,0 +1,30 @@
+{
+  "name": "zcode-tps-monitor",
+  "version": "2.5.0",
+  "description": "ZCode session-level token rate monitor — the instant tok/s of the just-finished turn is shown automatically when each reply ends; with a real-time dashboard, /tps command and MCP tools, plus optional service-TPS monitoring via a real metrics endpoint or demo data.",
+  "description_i18n": {
+    "en": "ZCode session-level token rate monitor — the instant tok/s of the just-finished turn is shown automatically when each reply ends; with a real-time dashboard, /tps command and MCP tools, plus optional service-TPS monitoring via a real metrics endpoint or demo data.",
+    "zh-CN": "ZCode 会话级 Token 速率监控插件 —— 每轮回复结束的瞬间自动显示本轮即时 tok/s；附实时监控大屏、/tps 命令与 MCP 工具，可选业务 TPS 监控（真实指标接口或演示数据）。"
+  },
+  "author": {
+    "name": "Administrator"
+  },
+  "license": "AGPL-3.0-only",
+  "keywords": [
+    "tps",
+    "monitor",
+    "metrics",
+    "performance",
+    "throughput"
+  ],
+  "commands": "commands",
+  "skills": "skills",
+  "userConfig": {
+    "metrics_url": {
+      "title": "Metrics URL",
+      "description": "HTTP 接口地址，返回包含 tps/qps 字段的 JSON；留空则使用演示数据。",
+      "type": "string",
+      "required": false
+    }
+  }
+}

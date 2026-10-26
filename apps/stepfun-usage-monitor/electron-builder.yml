@@ -1,0 +1,74 @@
+# electron-builder 配置(V2.3.0 桌面客户端)
+# 说明:
+#   - 这是工作区级配置,只服务 electron/ 下的桌面客户端;插件本体(hooks/scripts/mcp/
+#     commands/dashboard)不参与打包逻辑,也不因此新增任何依赖。
+#   - 打包内容刻意收得很紧:electron/ + 插件核心源码(主进程要 import 它们)+ package.json。
+#     产物内不含测试、文档与图标中间文件。
+#   - 发布走 GitHub Releases,electron-updater 据此做自动更新(publish 段)。
+appId: com.stepfun.tps-monitor
+productName: StepFun TPS Monitor
+copyright: Copyright © 2026 Neriah-Ado
+
+directories:
+  output: dist
+  buildResources: electron/build
+
+files:
+  - electron/**/*
+  - plugins/zcode-tps-monitor/**/*
+  - package.json
+  - "!**/*.md"
+
+# asar 打包:主进程用 import 直接读插件源码,asar 内路径对 fs 透明
+asar: true
+
+win:
+  icon: electron/build/icons/icon.ico
+  # 安装版 + 便携版(计划要求两者齐备)
+  target:
+    - target: nsis
+      arch: [x64, arm64]
+    - target: portable
+      arch: [x64]
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: StepFun TPS Monitor
+  artifactName: ${productName}-${version}-${arch}-Setup.${ext}
+
+portable:
+  artifactName: ${productName}-${version}-${arch}-Portable.${ext}
+
+mac:
+  icon: electron/build/icons/icon.icns
+  category: public.app-category.developer-tools
+  # 未签名出包:CI 上 CSC_LINK 未配置时不可留空(env 里的空串会被当成签名文件路径
+  # 去加载,报 "not a file");需要签名时删除 identity: null 并注入 CSC_LINK 等变量。
+  identity: null
+  target:
+    - target: dmg
+      arch: [x64, arm64]
+  # 证书/公证由 CI 环境变量注入(CSC_LINK / CSC_KEY_PASSWORD / APPLE_ID 等);
+  # 本地无证书时同样能出包(未签名),只是首次打开需在系统设置里放行。
+  artifactName: ${productName}-${version}-${arch}.${ext}
+
+dmg:
+  artifactName: ${productName}-${version}-${arch}.${ext}
+
+linux:
+  icon: electron/build/icons
+  category: Development
+  target:
+    - target: AppImage
+      arch: [x64, arm64]
+  artifactName: ${productName}-${version}-${arch}.${ext}
+
+publish:
+  - provider: github
+    owner: Neriah-Ado
+    repo: stepfun-usage-monitor
+    releaseType: release

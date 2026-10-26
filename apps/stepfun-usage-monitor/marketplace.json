@@ -1,0 +1,26 @@
+{
+  "name": "tps-local-marketplace",
+  "description": "本地插件市场：收录 ZCode 会话级 Token 速率监控插件（本轮真实 tok/s、实时大屏、/tps 命令与 MCP 工具）。",
+  "owner": {
+    "name": "Administrator"
+  },
+  "plugins": [
+    {
+      "name": "zcode-tps-monitor",
+      "source": "./plugins/zcode-tps-monitor",
+      "description": "ZCode 会话级 Token 速率监控插件 —— 每轮回复结束的瞬间自动显示本轮即时 tok/s；附实时监控大屏、/tps 命令与 MCP 工具，可选业务 TPS 监控（真实指标接口或演示数据）。",
+      "version": "2.5.0",
+      "author": {
+        "name": "Administrator"
+      },
+      "icon": "https://gcore.jsdelivr.net/gh/Neriah-Ado/stepfun-usage-monitor@v2.5.0/assets/icon.png",
+      "category": "monitoring",
+      "keywords": [
+        "tps",
+        "monitor",
+        "metrics",
+        "performance"
+      ]
+    }
+  ]
+}

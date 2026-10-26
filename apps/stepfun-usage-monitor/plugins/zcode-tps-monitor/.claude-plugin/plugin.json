@@ -1,0 +1,26 @@
+{
+  "name": "zcode-tps-monitor",
+  "version": "2.5.0",
+  "description": "ZCode session-level token rate monitor — the instant tok/s of the just-finished turn is shown automatically when each reply ends; with a real-time dashboard, /tps command and MCP tools, plus optional service-TPS monitoring via a real metrics endpoint or demo data.",
+  "author": {
+    "name": "Administrator"
+  },
+  "license": "AGPL-3.0-only",
+  "keywords": [
+    "tps",
+    "monitor",
+    "metrics",
+    "performance",
+    "throughput"
+  ],
+  "commands": "commands",
+  "skills": "skills",
+  "userConfig": {
+    "metrics_url": {
+      "title": "Metrics URL",
+      "description": "HTTP endpoint returning JSON with a tps/qps field; empty = demo data.",
+      "type": "string",
+      "required": false
+    }
+  }
+}

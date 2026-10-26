@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>TPS 悬浮条</title>
+<style>
+  /* 透明无边框小窗:整个页面透明,只有卡片有背景。
+     主题跟随系统(与浏览器大屏的 theme=system 一致)。 */
+  :root {
+    --bg: rgba(16, 20, 40, 0.82);
+    --fg: #eaf0ff;
+    --dim: #9aa7c7;
+    --accent: #4da3ff;
+    --ok: #4ade80;
+    --border: rgba(255, 255, 255, 0.14);
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: rgba(255, 255, 255, 0.86);
+      --fg: #16203a;
+      --dim: #5b6a8c;
+      --accent: #2f54eb;
+      --ok: #16a34a;
+      --border: rgba(10, 20, 60, 0.12);
+    }
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%;
+    background: transparent;
+    font-family: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    color: var(--fg);
+    overflow: hidden;
+    user-select: none;
+  }
+  #card {
+    width: 100%; height: 100%;
+    display: flex; flex-direction: column;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    backdrop-filter: blur(14px) saturate(1.4);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+    transition: height 0.12s ease;
+  }
+  /* 拖动区:整张卡片可拖(按钮除外)。点击穿透开启时拖拽自然失效——这是预期行为。 */
+  #bar {
+    -webkit-app-region: drag;
+    flex: 1;
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 10px;
+    cursor: grab;
+  }
+  #tps {
+    font-family: "Cascadia Mono", Consolas, monospace;
+    font-size: 22px; font-weight: 700; line-height: 1;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  #unit { font-size: 11px; color: var(--dim); }
+  #spacer { flex: 1; }
+  #model {
+    font-size: 10px; color: var(--dim);
+    max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  /* V2.5.0:聚焦非 zcode 数据源时的来源标签;缺省(单源 zcode)不显示,与 V2.4.0 一致 */
+  #agentTag {
+    font-size: 10px; color: var(--accent);
+    max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  #agentTag[hidden] { display: none; }
+  button {
+    -webkit-app-region: no-drag;
+    appearance: none; border: 1px solid var(--border);
+    background: transparent; color: var(--dim);
+    border-radius: 6px; width: 22px; height: 22px;
+    font-size: 12px; line-height: 1; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  button:hover { color: var(--fg); border-color: var(--accent); }
+  button.on { color: var(--ok); border-color: var(--ok); }
+
+  /* 展开区:默认隐藏(高度 0),悬停时由主进程放大窗口后显示 */
+  #details {
+    height: 0; overflow: hidden;
+    border-top: 1px solid transparent;
+    padding: 0 10px;
+    display: flex; flex-direction: column; justify-content: center; gap: 3px;
+    font-size: 11px; color: var(--dim);
+    transition: opacity 0.1s ease;
+    opacity: 0;
+  }
+  body.expanded #details {
+    height: calc(100% - 44px);
+    border-top-color: var(--border);
+    opacity: 1;
+  }
+  .row { display: flex; justify-content: space-between; gap: 8px; }
+  .row b {
+    color: var(--fg); font-weight: 600;
+    font-family: "Cascadia Mono", Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  #spark { display: flex; align-items: flex-end; gap: 2px; height: 16px; margin-top: 2px; }
+  #spark i {
+    flex: 1; min-width: 2px;
+    background: var(--accent); opacity: 0.75;
+    border-radius: 1px;
+    height: 10%;
+  }
+  body.offline #tps { color: var(--dim); }
+</style>
+</head>
+<body>
+<div id="card">
+  <div id="bar">
+    <span id="tps">--</span><span id="unit">tok/s</span>
+    <span id="spacer"></span>
+    <span id="agentTag" hidden title=""></span>
+    <span id="model" title=""></span>
+    <button id="pin" title="点击穿透:鼠标事件穿透到下层窗口(可在托盘菜单关闭)">📌</button>
+  </div>
+  <div id="details">
+    <div class="row"><span id="d-src-label" hidden>数据源</span><b id="d-src" hidden>--</b></div>
+    <div class="row"><span>首字延迟</span><b id="d-ttft">--</b></div>
+    <div class="row"><span id="d-avg-label">近 5 次均</span><b id="d-avg">--</b></div>
+    <div class="row"><span>累计</span><b id="d-total">--</b></div>
+    <div id="spark"></div>
+  </div>
+</div>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const api = window.tpsDesktop;
+  const fmt = (v, d = 1) => (v == null ? "--" : v.toFixed(d));
+  const fmtTok = (v) => {
+    if (v == null) return "--";
+    if (v >= 1e6) return (v / 1e6).toFixed(2) + "M";
+    if (v >= 1e3) return (v / 1e3).toFixed(1) + "k";
+    return String(Math.round(v));
+  };
+
+  const AGENT_LABELS = { zcode: "ZCode", "claude-code": "Claude Code", codex: "Codex", opencode: "OpenCode", cline: "Cline" };
+
+  function render(d) {
+    if (!d) return;
+    document.body.classList.toggle("offline", !d.ok);
+    $("tps").textContent = d.tokPerSec == null ? "--" : fmt(d.tokPerSec);
+    $("model").textContent = d.model || "";
+    $("model").title = d.model || "";
+    // V2.5.0:聚焦单一非 zcode 数据源时显示来源标签;缺省(单源 zcode)不显示
+    const showTag = !!(d.agentScoped && d.provider && d.provider !== "zcode");
+    const tagName = showTag ? (AGENT_LABELS[d.provider] || d.provider) : "";
+    $("agentTag").hidden = !showTag;
+    $("agentTag").textContent = tagName;
+    $("agentTag").title = tagName;
+    $("d-src-label").hidden = !showTag;
+    $("d-src").hidden = !showTag;
+    $("d-src").textContent = tagName;
+    $("d-ttft").textContent = d.ttftMs == null ? "--" : (d.ttftMs / 1000).toFixed(2) + " s";
+    $("d-avg").textContent = d.avg == null ? "--" : fmt(d.avg) + " tok/s";
+    $("d-avg-label").textContent = "近 " + (d.samples || 5) + " 次均";
+    $("d-total").textContent = fmtTok(d.totalTok) + " tok";
+    const spark = $("spark");
+    const max = Math.max(1, ...(d.spark || []));
+    if (spark.children.length !== (d.spark || []).length) {
+      spark.textContent = "";
+      for (let i = 0; i < (d.spark || []).length; i++) spark.appendChild(document.createElement("i"));
+    }
+    [...spark.children].forEach((el, i) => {
+      const v = (d.spark || [])[i] || 0;
+      el.style.height = Math.max(8, Math.round((v / max) * 100)) + "%";
+    });
+  }
+
+  if (api) {
+    api.onOverlayData(render);
+    // 悬停展开 / 移开收起(点击穿透开启时仍能收到移动事件:forward: true)
+    document.addEventListener("mouseenter", () => {
+      document.body.classList.add("expanded");
+      api.expandOverlay().catch(() => {});
+    });
+    document.addEventListener("mouseleave", () => {
+      document.body.classList.remove("expanded");
+      api.collapseOverlay().catch(() => {});
+    });
+    // 穿透开关:开启后点击会穿透到下层,故只能在这里关闭、在托盘菜单里也能切
+    const pin = $("pin");
+    api.getClickThrough().then((v) => pin.classList.toggle("on", !!v)).catch(() => {});
+    pin.addEventListener("click", () => {
+      api.getClickThrough().then((v) => api.setClickThrough(!v)).catch(() => {});
+    });
+    api.onClickThroughChanged((v) => pin.classList.toggle("on", !!v));
+    api.appInfo().then((info) => { document.title = "TPS 悬浮条 · " + (info.version || ""); }).catch(() => {});
+  }
+</script>
+</body>
+</html>

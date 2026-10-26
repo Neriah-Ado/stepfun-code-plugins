@@ -1,0 +1,993 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark" data-glass="on">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Token 输出速率 · ZCode 实时监控</title>
+<!--TPS_CONFIG-->
+<style>
+  /* ---- 可配置层(JS 按 ~/.zcode/tps-monitor.config.json 的 appearance 写入) ---- */
+  :root {
+    --font-ui: "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    --font-num: "Cascadia Mono", Consolas, monospace;
+    --base-size: 16px;
+    --font-scale: 1;
+    --accent: #4da3ff;
+    --glass-blur: 10.8px;
+  }
+  /* ---- 主题色板 ---- */
+  [data-theme="dark"] {
+    --bg-a: #0b1020; --bg-b: #171233; --bg-c: #0d1a2e;
+    --panel-solid: #131a2e; --panel2: #0f1526; --panel-line: #232c47;
+    --text: #e8ecf7; --dim: #8b94ad;
+    --green: #2fd67b; --orange: #ffb454; --red: #ff5d73;
+    --glass-bg: rgba(19, 26, 46, 0.55);
+    --glass-line: rgba(255, 255, 255, 0.08);
+    --glass-edge: rgba(255, 255, 255, 0.18);
+    --glass-shadow: 0 18px 40px rgba(0, 0, 0, 0.45), 0 4px 12px rgba(0, 0, 0, 0.35);
+    --num-shadow: 0 1px 2px rgba(0, 0, 0, 0.55);
+    --badge-bg: rgba(15, 21, 38, 0.75);
+  }
+  [data-theme="light"] {
+    --bg-a: #eef1f7; --bg-b: #e4eaf5; --bg-c: #f6f8fc;
+    --panel-solid: #ffffff; --panel2: #e8ecf4; --panel-line: #d8deea;
+    --text: #1d2536; --dim: #5b6478;
+    --green: #18a85f; --orange: #d97c06; --red: #e5484d;
+    --glass-bg: rgba(255, 255, 255, 0.55);
+    --glass-line: rgba(255, 255, 255, 0.65);
+    --glass-edge: rgba(255, 255, 255, 0.9);
+    --glass-shadow: 0 18px 40px rgba(31, 45, 79, 0.16), 0 4px 12px rgba(31, 45, 79, 0.1);
+    --num-shadow: 0 1px 1px rgba(255, 255, 255, 0.85);
+    --badge-bg: rgba(255, 255, 255, 0.75);
+  }
+  /* ---- 玻璃 / 实色表面:glassIntensity=0 时回落 V2.0 实色风格 ---- */
+  [data-glass="on"] {
+    --surface: var(--glass-bg);
+    --surface-line: var(--glass-line);
+    --surface-filter: blur(var(--glass-blur)) saturate(160%);
+    --surface-shadow: var(--glass-shadow);
+    --surface-edge: var(--glass-edge);
+    --radius-card: 1.25rem;
+    --radius-panel: 1.25rem;
+  }
+  [data-glass="off"] {
+    --surface: var(--panel-solid);
+    --surface-line: var(--panel-line);
+    --surface-filter: none;
+    --surface-shadow: none;
+    --surface-edge: transparent;
+    --radius-card: 0.75rem;
+    --radius-panel: 0.75rem;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { font-size: calc(var(--base-size) * var(--font-scale)); }
+  body {
+    background: linear-gradient(135deg, var(--bg-a) 0%, var(--bg-b) 55%, var(--bg-c) 100%);
+    background-attachment: fixed;
+    color: var(--text);
+    font-family: var(--font-ui);
+    min-height: 100vh; display: flex; flex-direction: column; padding: 1rem; gap: 0.75rem;
+    opacity: 0; transition: opacity 0.18s ease;
+  }
+  body.ready { opacity: 1; }
+
+  header { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+  header h1 { font-size: 1.25rem; font-weight: 600; letter-spacing: 1px; }
+  .badge {
+    font-size: 0.75rem; padding: 0.2rem 0.65rem; border-radius: 999px;
+    border: 1px solid var(--green); color: var(--green); background: var(--badge-bg);
+  }
+  .clock { margin-left: auto; color: var(--dim); font-variant-numeric: tabular-nums; font-size: 0.875rem; font-family: var(--font-num); }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--green); margin-right: 6px; animation: pulse 2s infinite; }
+  .dot.err { background: var(--red); }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: .35; } }
+
+  .gearBtn {
+    background: var(--surface); border: 1px solid var(--surface-line); color: var(--text);
+    border-radius: 999px; padding: 0.25rem 0.7rem; font-size: 0.8125rem; cursor: pointer;
+    font-family: var(--font-ui); backdrop-filter: var(--surface-filter);
+    -webkit-backdrop-filter: var(--surface-filter);
+  }
+  .gearBtn:hover { border-color: var(--accent); color: var(--accent); }
+  .gearBtn.on { border-color: var(--accent); color: var(--accent); }
+
+  /* ---- 桌面端专属控件(仅 Electron 环境可见)----
+     html.tps-electron 由 preload.cjs 在首屏绘制前添加,浏览器里这两个按钮始终隐藏,
+     行为与 V2.2.0 完全一致。 */
+  .deskBtn {
+    display: none;
+    background: var(--surface); border: 1px solid var(--surface-line); color: var(--dim);
+    border-radius: 999px; width: 2rem; height: 2rem; padding: 0; cursor: pointer;
+    font-size: 0.875rem; line-height: 1;
+    font-family: var(--font-ui); backdrop-filter: var(--surface-filter);
+    -webkit-backdrop-filter: var(--surface-filter);
+  }
+  .deskBtn:hover { border-color: var(--accent); color: var(--accent); }
+  .deskBtn.on { border-color: var(--accent); color: var(--accent); }
+  html.tps-electron .deskBtn { display: inline-flex; align-items: center; justify-content: center; }
+
+  /* ---- 液态玻璃表面 ---- */
+  .card, .mini .m, .panel, #drawer, .agentCard {
+    background: var(--surface);
+    border: 1px solid var(--surface-line);
+    border-radius: var(--radius-card);
+    box-shadow: var(--surface-shadow), inset 0 1px 0 var(--surface-edge);
+    backdrop-filter: var(--surface-filter);
+    -webkit-backdrop-filter: var(--surface-filter);
+  }
+  /* 不支持 backdrop-filter 的浏览器:统一回落实色 */
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    html[data-glass="on"] {
+      --surface: var(--panel-solid);
+      --surface-line: var(--panel-line);
+      --surface-filter: none;
+      --surface-shadow: none;
+      --surface-edge: transparent;
+    }
+  }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(13.75rem, 1fr)); gap: 0.75rem; }
+  .card { padding: 0.875rem 1.125rem; position: relative; overflow: hidden; }
+  .card .label { color: var(--dim); font-size: 0.8125rem; }
+  .card .value {
+    font-size: 2.5rem; font-weight: 700; font-variant-numeric: tabular-nums;
+    margin-top: 0.375rem; font-family: var(--font-num); text-shadow: var(--num-shadow);
+  }
+  .card .unit { font-size: 0.875rem; color: var(--dim); font-weight: 400; margin-left: 0.25rem; }
+  .card .delta { font-size: 0.75rem; margin-top: 0.375rem; color: var(--dim); min-height: 1rem; }
+  .card .delta.model { color: var(--text); font-weight: 600; font-size: 0.8125rem; }
+  .card::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px; background: var(--green); }
+
+  .mini { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.75rem; }
+  @media (max-width: 45rem) { .mini { grid-template-columns: repeat(2, 1fr); } }
+  .mini .m { padding: 0.625rem 1rem; }
+  .mini .m .label { color: var(--dim); font-size: 0.75rem; }
+  .mini .m .v { margin-top: 0.25rem; }
+  .mini .m .v .n { font-size: 1.25rem; font-weight: 600; font-variant-numeric: tabular-nums; font-family: var(--font-num); }
+  .mini .m .v .u { font-size: 0.75rem; color: var(--dim); font-weight: 400; margin-left: 0.1875rem; }
+
+  .panel { padding: 0.75rem 0.875rem; display: flex; flex-direction: column; flex: 1; border-radius: var(--radius-panel); }
+  .panel h2 { font-size: 0.875rem; font-weight: 600; color: var(--dim); margin-bottom: 0.5rem; display: flex; gap: 0.875rem; align-items: center; }
+  .legend { display: flex; gap: 0.75rem; font-size: 0.75rem; color: var(--dim); font-weight: 400; margin-left: auto; }
+  .legend i { display: inline-block; width: 10px; height: 3px; border-radius: 2px; margin-right: 4px; vertical-align: middle; }
+  canvas { width: 100%; flex: 1; min-height: 11rem; }
+  .sysrow { display: flex; justify-content: space-between; font-size: 0.8125rem; color: var(--dim); margin: 0.5rem 0 0.25rem; }
+  .sysrow b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; font-family: var(--font-num); }
+  .bar { height: 0.5rem; border-radius: 0.25rem; background: var(--panel2); overflow: hidden; }
+  .bar > div { height: 100%; border-radius: 0.25rem; background: var(--accent); transition: width 0.6s; }
+  .bar.warn > div { background: var(--orange); }
+  .bar.crit > div { background: var(--red); }
+  footer { color: var(--dim); font-size: 0.75rem; text-align: center; }
+
+  /* ---- 多 agent 展示层(V2.5.0):切换条 / 分组卡片 / 对比视图 ----
+     仅在启用 ≥2 个数据源时由 JS 显示;单源时整块 hidden,页面与 V2.4.0 完全一致。
+     纯 CSS + 原生 JS,无任何依赖;能力缺失字段(如第三方源无 TTFT)显示「—」。 */
+  .agentBar { display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center; }
+  .agentBar .chip {
+    background: var(--surface); border: 1px solid var(--surface-line); color: var(--dim);
+    border-radius: 999px; padding: 0.25rem 0.8rem; font-size: 0.8125rem; cursor: pointer;
+    font-family: var(--font-ui); backdrop-filter: var(--surface-filter);
+    -webkit-backdrop-filter: var(--surface-filter);
+  }
+  .agentBar .chip:hover { border-color: var(--accent); color: var(--accent); }
+  .agentBar .chip.on { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+  .agentBar .chip i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 5px; vertical-align: middle; }
+  .agentCards { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0.75rem; }
+  .agentCard { padding: 0.75rem 1rem; border-radius: var(--radius-card); }
+  .agentCard .head { display: flex; align-items: center; gap: 0.4rem; font-size: 0.875rem; font-weight: 600; }
+  .agentCard .head i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; }
+  .agentCard .head .fmt { margin-left: auto; font-size: 0.6875rem; color: var(--dim); font-weight: 400; }
+  .agentCard .rate {
+    font-size: 1.75rem; font-weight: 700; font-variant-numeric: tabular-nums;
+    margin-top: 0.25rem; font-family: var(--font-num); text-shadow: var(--num-shadow);
+  }
+  .agentCard .rate .u { font-size: 0.75rem; color: var(--dim); font-weight: 400; margin-left: 0.2rem; }
+  .agentCard .stats { display: flex; gap: 0.9rem; font-size: 0.75rem; color: var(--dim); margin-top: 0.3rem; }
+  .agentCard .stats b { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; font-family: var(--font-num); }
+  .agentCard .sess-label { font-size: 0.6875rem; color: var(--dim); margin-top: 0.45rem; }
+  .agentCard select {
+    margin-top: 0.2rem; width: 100%;
+    background: var(--panel-solid); color: var(--text); border: 1px solid var(--surface-line);
+    border-radius: 0.4rem; padding: 0.25rem 0.4rem; font-size: 0.75rem; font-family: var(--font-ui);
+  }
+  #agentsSection { display: flex; flex-direction: column; gap: 0.75rem; }
+  #cmpHint { font-size: 0.6875rem; color: var(--dim); margin-top: 0.35rem; }
+
+  /* ---- 外观设置抽屉 ---- */
+  #drawer {
+    position: fixed; top: 0; right: 0; bottom: 0; width: min(22rem, 92vw); z-index: 50;
+    padding: 1.25rem; display: flex; flex-direction: column; gap: 0.75rem; overflow-y: auto;
+    border-radius: var(--radius-panel) 0 0 var(--radius-panel);
+    transform: translateX(105%); visibility: hidden;
+    transition: transform 0.22s ease, visibility 0.22s ease;
+  }
+  #drawer.open { transform: none; visibility: visible; }
+  #drawer h2 { font-size: 1rem; font-weight: 600; }
+  #drawer label { display: flex; flex-direction: column; gap: 0.3rem; font-size: 0.8125rem; color: var(--dim); }
+  #drawer input[type="text"], #drawer select {
+    background: var(--panel-solid); color: var(--text); border: 1px solid var(--surface-line);
+    border-radius: 0.5rem; padding: 0.4rem 0.55rem; font-size: 0.8125rem; font-family: var(--font-ui);
+  }
+  #drawer input[type="range"] { accent-color: var(--accent); }
+  #drawer input[type="color"] { inline-size: 3rem; block-size: 1.75rem; border: none; background: none; padding: 0; cursor: pointer; }
+  #drawer .row { display: flex; align-items: center; gap: 0.5rem; }
+  #drawer .row .val { font-family: var(--font-num); color: var(--text); min-width: 3.25rem; text-align: right; font-size: 0.8125rem; }
+  .drawer-actions { display: flex; gap: 0.5rem; margin-top: 0.5rem; }
+  .drawer-actions button {
+    flex: 1; padding: 0.45rem; border-radius: 0.5rem; border: 1px solid var(--surface-line);
+    background: var(--panel-solid); color: var(--text); cursor: pointer; font-size: 0.8125rem; font-family: var(--font-ui);
+  }
+  .drawer-actions button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  #setMsg { font-size: 0.75rem; color: var(--dim); min-height: 1rem; }
+  #setMsg.err { color: var(--red); }
+  #drawer .hint { font-size: 0.6875rem; color: var(--dim); line-height: 1.5; }
+</style>
+<script>
+"use strict";
+// 外观配置应用(在 <head> 内同步执行,消除首屏主题闪烁/FOUC)
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+var webFontFamily = null; // fontUrl 加载成功后的 FontFace 家族名
+var currentAppearance = null;
+var mediaLight = null;
+
+function applyAppearance(a) {
+  if (!a) a = {};
+  currentAppearance = a;
+  var root = document.documentElement;
+  var theme = a.theme || "dark";
+  if (theme === "system") {
+    if (!mediaLight) mediaLight = window.matchMedia ? window.matchMedia("(prefers-color-scheme: light)") : null;
+    theme = mediaLight && mediaLight.matches ? "light" : "dark";
+  }
+  root.dataset.theme = theme;
+  var glass = Number(a.glassIntensity);
+  root.dataset.glass = Number.isFinite(glass) && glass > 0 ? "on" : "off";
+  var stack = a.fontFamily || "Segoe UI, Microsoft YaHei, system-ui, sans-serif";
+  root.style.setProperty("--font-ui", webFontFamily ? '"tps-webfont", ' + stack : stack);
+  root.style.setProperty("--font-num", a.monoFont || "Cascadia Mono, Consolas, monospace");
+  root.style.setProperty("--base-size", (a.fontSize || 16) + "px");
+  root.style.setProperty("--font-scale", String(a.fontScale || 1));
+  root.style.setProperty("--accent", a.accentColor || "#4da3ff");
+  root.style.setProperty("--glass-blur", (18 * (Number.isFinite(glass) ? glass : 0.6)).toFixed(1) + "px");
+  loadWebFont(a.fontUrl, stack);
+  // 主题/字体/玻璃变化后重绘曲线(首屏时 body 脚本尚未执行,故判空)
+  if (typeof scheduleDraw === "function") scheduleDraw();
+}
+
+function loadWebFont(url, stack) {
+  if (!url) { webFontFamily = null; return; }
+  if (window.__TPS_WEBFONT_URL === url && webFontFamily) return;
+  window.__TPS_WEBFONT_URL = url;
+  try {
+    var ff = new FontFace("tps-webfont", "url(" + JSON.stringify(url) + ")");
+    ff.load().then(function (f) {
+      document.fonts.add(f);
+      webFontFamily = "tps-webfont";
+      applyAppearance(currentAppearance || {});
+    }).catch(function () { webFontFamily = null; });
+  } catch { webFontFamily = null; }
+}
+
+(function bootConfig() {
+  var injected = window.__TPS_CONFIG__;
+  if (injected && injected.appearance) {
+    applyAppearance(injected.appearance);
+    return;
+  }
+  // 未注入(如直接打开文件):拉取一次配置再应用
+  fetch("/api/config").then(function (r) { return r.json(); }).then(function (c) {
+    applyAppearance(c.appearance || {});
+  }).catch(function () { applyAppearance({}); });
+})();
+</script>
+</head>
+<body>
+  <header>
+    <h1>⚡ Token 输出速率 · ZCode 实时监控</h1>
+    <span class="badge">真实数据 · 当前会话 · 主对话</span>
+    <button class="deskBtn" id="pinBtn" type="button" title="窗口置顶(桌面端)">📌</button>
+    <button class="deskBtn" id="ovBtn" type="button" title="显示/隐藏悬浮条(桌面端)">▣</button>
+    <button class="gearBtn" id="gearBtn" type="button" title="自定义主题、字体与玻璃效果">⚙ 外观</button>
+    <span class="clock"><span class="dot" id="livendot"></span><span id="clock">--:--:--</span></span>
+  </header>
+
+  <nav id="agentBar" class="agentBar" hidden aria-label="数据源切换"></nav>
+
+  <div class="cards">
+    <div class="card">
+      <div class="label">最近一次主回复的生成速度</div>
+      <div class="value"><span id="toks">--</span><span class="unit">tok/s</span></div>
+      <div class="delta model" id="tokmodel">模型 --</div>
+      <div class="delta" id="tokinfo">等待数据…</div>
+    </div>
+    <div class="card">
+      <div class="label">首字延迟(TTFT)</div>
+      <div class="value"><span id="ttft">--</span><span class="unit">s</span></div>
+      <div class="delta" id="ttftinfo">从发出消息到模型开始出字</div>
+    </div>
+  </div>
+
+  <div class="mini">
+    <div class="m"><div class="label">近5次平均</div><div class="v"><span class="n" id="avg">--</span><span class="u">tok/s</span></div></div>
+    <div class="m"><div class="label">近5次峰值</div><div class="v"><span class="n" id="max">--</span><span class="u">tok/s</span></div></div>
+    <div class="m"><div class="label">上轮输出</div><div class="v"><span class="n" id="out">--</span><span class="u">tok</span></div></div>
+    <div class="m"><div class="label">会话请求数</div><div class="v"><span class="n" id="cnt">--</span><span class="u">次</span></div></div>
+  </div>
+
+  <section id="agentsSection" hidden>
+    <div class="agentCards" id="agentCards"></div>
+    <div class="panel">
+      <h2>多 agent 对比 · 同轴速率
+        <span class="legend" id="cmpLegend"></span>
+      </h2>
+      <canvas id="cmpChart" height="220"></canvas>
+      <div id="cmpHint">各数据源的生成耗时口径不同(实测 / 估算),同轴对比仅供参考;切换条聚焦某源时其余曲线变淡。</div>
+    </div>
+  </section>
+
+  <div class="panel">
+    <h2>生成速率曲线 <span class="legend"><span><i style="background:var(--green)"></i>tok/s</span><span id="tokrange"></span></span></h2>
+    <canvas id="tokChart" height="260"></canvas>
+  </div>
+
+  <div class="panel">
+    <h2>本机资源(真实)</h2>
+    <div class="sysrow"><span>CPU <b id="cpu">--%</b> (<span id="cores">-</span> 核)</span></div>
+    <div class="bar" id="cpubar"><div style="width:0%"></div></div>
+    <div class="sysrow"><span>内存 <b id="mem">--</b></span><span><b id="mempct">--%</b></span></div>
+    <div class="bar" id="membar"><div style="width:0%"></div></div>
+    <div class="sysrow"><span>主机运行 <b id="uptime">--</b></span><span id="platform">-</span></div>
+  </div>
+
+  <footer><span id="footSrc">SSE 实时推送 · 数据源:ZCode usage 数据库(真实) · 仅统计当前会话主对话请求</span></footer>
+
+  <aside id="drawer" aria-label="外观设置">
+    <h2>⚙ 外观设置</h2>
+    <label>主题
+      <select id="set-theme">
+        <option value="dark">深色</option>
+        <option value="light">浅色</option>
+        <option value="system">跟随系统</option>
+      </select>
+    </label>
+    <label>界面字体(CSS font-family 栈)
+      <input type="text" id="set-font" placeholder="Segoe UI, Microsoft YaHei, sans-serif" spellcheck="false" />
+    </label>
+    <label>数字字体(等宽优先)
+      <input type="text" id="set-mono" placeholder="Cascadia Mono, Consolas, monospace" spellcheck="false" />
+    </label>
+    <label>基准字号(12–24px)
+      <span class="row"><input type="range" id="set-size" min="12" max="24" step="1" style="flex:1" /><span class="val" id="size-v"></span></span>
+    </label>
+    <label>整体缩放(0.8–1.6×)
+      <span class="row"><input type="range" id="set-scale" min="0.8" max="1.6" step="0.05" style="flex:1" /><span class="val" id="scale-v"></span></span>
+    </label>
+    <label>强调色
+      <span class="row"><input type="color" id="set-accent" /><input type="text" id="set-accent-text" spellcheck="false" /></span>
+    </label>
+    <label>玻璃强度(0 = 关闭,回到实色)
+      <span class="row"><input type="range" id="set-glass" min="0" max="1" step="0.05" style="flex:1" /><span class="val" id="glass-v"></span></span>
+    </label>
+    <label>Web 字体地址(可选,http(s)/file,失败自动回退)
+      <input type="text" id="set-fonturl" placeholder="https://example.com/font.woff2" spellcheck="false" />
+    </label>
+    <div class="drawer-actions">
+      <button type="button" id="set-save" class="primary">保存</button>
+      <button type="button" id="set-reset">恢复默认</button>
+      <button type="button" id="set-close">关闭</button>
+    </div>
+    <div id="setMsg"></div>
+    <div class="hint">配置写入 ~/.zcode/tps-monitor.config.json,仅本机生效;桌面客户端与浏览器大屏外观互通,悬浮条重启后按同套配置渲染。</div>
+  </aside>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+
+document.body.classList.add("ready");
+
+// ---- 系统主题变化时实时跟随(system 模式) ----
+try {
+  const mq = window.matchMedia("(prefers-color-scheme: light)");
+  mq.addEventListener("change", () => {
+    if (currentAppearance && currentAppearance.theme === "system") applyAppearance(currentAppearance);
+  });
+} catch {}
+
+// 值不变不写 DOM(textContent 前比对),减少 layout 抖动
+function setText(id, v) {
+  const el = $(id);
+  if (el && el.textContent !== v) el.textContent = v;
+}
+function setNum(id, v, digits = 0) {
+  setText(id, v == null ? "--" : Number(v).toFixed(digits));
+}
+
+// 十六进制色值才能安全拼接 alpha 通道;其余格式(rgb/hsl/色名)用全局透明度近似
+function withAlpha(color, alphaHex) {
+  if (typeof color === "string" && /^#[0-9a-f]{6}$/i.test(color)) return color + alphaHex;
+  return color;
+}
+
+// canvas 位图尺寸缓存(dpr × 宽 × 高),避免每次重绘都重建位图
+const canvasSizeCache = new WeakMap();
+
+function drawLine(canvas, series, colors, opts = {}) {
+  const dpr = window.devicePixelRatio || 1;
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  if (!w || !h) return;
+  // devicePixelRatio × 尺寸缓存:三者与上次绘制不一致才重置位图
+  const cached = canvasSizeCache.get(canvas);
+  if (!cached || cached.dpr !== dpr || cached.w !== w || cached.h !== h) {
+    canvas.width = w * dpr; canvas.height = h * dpr;
+    canvasSizeCache.set(canvas, { dpr, w, h });
+  }
+  const ctx = canvas.getContext("2d");
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+
+  const gridColor = cssVar("--panel-line") || "#232c47";
+  const dimColor = cssVar("--dim") || "#8b94ad";
+  const numFont = cssVar("--font-num") || "monospace";
+  const rootPx = parseFloat(getComputedStyle(document.documentElement).fontSize) || 16;
+  const fs = Math.max(9, Math.round(11 * rootPx / 16));
+
+  const all = series.flat().filter((v) => v != null);
+  if (!all.length) return;
+  let min = Math.min(...all), max = Math.max(...all);
+  if (opts.zero) min = 0;
+  const pad = (max - min) * 0.15 || 1;
+  min -= pad; max += pad;
+  const n = Math.max(...series.map((s) => s.length));
+  const x = (i) => (n <= 1 ? 0 : (i / (n - 1)) * (w - 44));
+  const y = (v) => h - 18 - ((v - min) / (max - min)) * (h - 30);
+
+  ctx.strokeStyle = gridColor; ctx.fillStyle = dimColor;
+  ctx.lineWidth = 1; ctx.font = `${fs}px ${numFont}`;
+  for (let g = 0; g <= 3; g++) {
+    const gy = 12 + ((h - 30) * g) / 3;
+    ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(w - 44, gy); ctx.stroke();
+    ctx.fillText(Math.round(max - ((max - min) * g) / 3), w - 38, gy + 4);
+  }
+
+  series.forEach((data, si) => {
+    if (!data.length) return;
+    const color = colors[si];
+    // 聚焦某源时淡化其余曲线(opts.dim[si] = true);默认不淡化
+    ctx.globalAlpha = opts.dim && opts.dim[si] ? 0.22 : 1;
+    if (opts.fill && si === 0) {
+      const grad = ctx.createLinearGradient(0, 0, 0, h);
+      grad.addColorStop(0, withAlpha(color, "33")); grad.addColorStop(1, withAlpha(color, "00"));
+      ctx.beginPath();
+      ctx.moveTo(x(0), y(data[0]));
+      data.forEach((v, i) => ctx.lineTo(x(i + n - data.length), y(v)));
+      ctx.lineTo(x(n - 1), h - 18); ctx.lineTo(x(n - data.length), h - 18);
+      ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
+    }
+    ctx.beginPath();
+    ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = "round";
+    data.forEach((v, i) => {
+      const px = x(i + n - data.length), py = y(v);
+      i === 0 ? ctx.moveTo(px, py) : ctx.lineTo(px, py);
+    });
+    ctx.stroke();
+    const last = data[data.length - 1];
+    ctx.beginPath();
+    ctx.arc(x(n - 1), y(last), 3, 0, Math.PI * 2);
+    ctx.fillStyle = color; ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+
+  if (opts.avgLine && series[0].length) {
+    const avg = series[0].reduce((a, b) => a + b, 0) / series[0].length;
+    ctx.beginPath(); ctx.setLineDash([4, 4]);
+    ctx.strokeStyle = gridColor; ctx.lineWidth = 1;
+    ctx.moveTo(0, y(avg)); ctx.lineTo(w - 44, y(avg)); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+}
+
+// --- Token 速率(真实数据) ---
+const tokHist = [];
+let histWindow = 0;      // 服务端历史窗口大小,增量推送按它裁剪
+let lastSampleAt = 0;    // 最后样本时间戳:canvas 脏标记
+let chartDirty = false;
+let drawQueued = false;
+// 千分位:与 CLI 的 fmtNum 同规则
+const fmtNum = (n) => n.toLocaleString("en-US");
+const chartColor = () => cssVar("--green") || "#2fd67b";
+const redraw = () => drawLine($("tokChart"), [tokHist], [chartColor()], { fill: true, zero: true, avgLine: true });
+
+// canvas 仅在收到新样本或 resize 时重绘:脏标记 + rAF 合并
+function scheduleDraw() {
+  chartDirty = true;
+  if (drawQueued) return;
+  drawQueued = true;
+  const raf = window.requestAnimationFrame || ((f) => setTimeout(f, 16));
+  raf(() => {
+    drawQueued = false;
+    if (!chartDirty) return;
+    chartDirty = false;
+    redraw();
+  });
+}
+
+// 全量历史(快照/REST 兜底):以数据库为准,刷新页面不丢
+function applyHistory(history) {
+  tokHist.length = 0;
+  for (const h of history) tokHist.push(h.tokPerSec ?? null);
+  const newest = history.reduce((a, h) => Math.max(a, h.completedAt || 0), 0);
+  if (newest > lastSampleAt) lastSampleAt = newest;
+  setText("tokrange", tokHist.length ? ("近 " + tokHist.length + " 次") : "");
+  scheduleDraw();
+}
+
+function applyToken(r) {
+  if (!r) return;
+  if (r.latest) {
+    setNum("toks", r.latest.tokPerSec, 1);
+    setNum("ttft", r.latest.ttftMs != null ? r.latest.ttftMs / 1000 : null, 1);
+    const genS = r.latest.genMs != null ? (r.latest.genMs / 1000).toFixed(1) : "-";
+    setText("tokmodel", "模型 " + (r.latest.model || "--"));
+    setText("tokinfo", "输出 " + fmtNum(r.latest.outputTokens) + " tok · 生成 " + genS + "s · ⏱ " +
+      new Date(r.latest.completedAt).toLocaleTimeString("zh-CN", { hour12: false }));
+    if (r.latest.tokPerSec != null) setText("out", fmtNum(r.latest.outputTokens));
+  }
+  if (r.session) {
+    setNum("avg", r.session.avg, 1);
+    setNum("max", r.session.max, 1);
+    setText("cnt", r.session.samples);
+    setText("tokrange", "会话 " + (r.sessionId || "").slice(0, 13) + "…");
+  }
+  if (r.history) applyHistory(r.history);
+  // V2.5.0:多源时的每源 latest/session(分组卡片);单源无此字段,行为不变
+  if (r.perProvider) applyPerProvider(r.perProvider);
+}
+
+function applySys(m) {
+  if (!m) return;
+  setNum("cpu", m.cpuPercent, 1);
+  setText("cores", m.cpuCores);
+  setBar("cpubar", m.cpuPercent);
+  setText("mem", (m.memUsedMB / 1024).toFixed(1) + " / " + (m.memTotalMB / 1024).toFixed(1) + " GB");
+  setNum("mempct", m.memPercent, 1); setBar("membar", m.memPercent);
+  setText("uptime", m.hostUptimeHours + " 小时");
+  setText("platform", m.platform);
+}
+
+function setBar(id, pct) {
+  const bar = $(id);
+  const v = Math.min(100, Math.max(0, pct ?? 0));
+  const width = v + "%";
+  const cls = "bar" + (v > 85 ? " crit" : v > 65 ? " warn" : "");
+  const fill = bar.firstElementChild;
+  if (fill.style.width !== width) fill.style.width = width;
+  if (bar.className !== cls) bar.className = cls;
+}
+
+function clock() {
+  $("clock").textContent = new Date().toLocaleTimeString("zh-CN", { hour12: false });
+}
+
+// ---- SSE 实时推送:替代定时轮询 ----
+// 事件:snapshot(连接/断线重连后全量)、token(新速率样本)、history-append(历史增量)、sys(系统指标)
+// 服务端每 15s 发心跳注释行;REST /api/token-rate、/api/metrics 保留给第三方与不支持 EventSource 的浏览器
+let pollTimer = null;
+
+function onStreamOpen() {
+  $("livendot").classList.remove("err");
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+function connectStream() {
+  if (!window.EventSource) { startPollingFallback(); return; }
+  const es = new EventSource("/api/events");
+  es.onopen = onStreamOpen;
+  es.onerror = () => { $("livendot").classList.add("err"); };
+  const on = (type, fn) => es.addEventListener(type, (ev) => {
+    try { fn(JSON.parse(ev.data)); } catch {}
+  });
+  on("snapshot", (d) => {
+    onStreamOpen();
+    if (d.histWindow) histWindow = Number(d.histWindow) || histWindow;
+    applyToken(d.token);
+    applySys(d.sys);
+    // V2.5.0:多源时快照携带每源视图(含历史),播种对比曲线的起点
+    if (d.perProvider) seedPerSeries(d.perProvider);
+  });
+  on("token", applyToken);
+  on("sys", applySys);
+  // V2.5.0:agents 事件(数据源列表变化时推送) → 重建切换条与分组卡片
+  on("agents", applyAgents);
+  on("history-append", (d) => {
+    // 带 provider 字段的增量进对应源的对比序列;不带字段的走原单源曲线(语义冻结)
+    if (d.provider) {
+      pushPerSample(d.provider, d.item && d.item.tokPerSec != null ? d.item.tokPerSec : null);
+      if (multiSource()) drawComparison();
+      return;
+    }
+    if ((d.completedAt || 0) > lastSampleAt) lastSampleAt = d.completedAt;
+    tokHist.push(d.tokPerSec ?? null);
+    while (histWindow > 0 && tokHist.length > histWindow) tokHist.shift();
+    setText("tokrange", tokHist.length ? ("近 " + tokHist.length + " 次") : "");
+    scheduleDraw();
+  });
+}
+
+// 不支持 EventSource 时的兼容路径:退回 REST 轮询
+function startPollingFallback() {
+  if (pollTimer) return;
+  const tick = async () => {
+    try {
+      const res = await fetch("/api/token-rate", { cache: "no-store" });
+      if (res.ok) { applyToken(await res.json()); $("livendot").classList.remove("err"); }
+      const m = await fetch("/api/metrics", { cache: "no-store" });
+      if (m.ok) applySys((await m.json()).system);
+    } catch { $("livendot").classList.add("err"); }
+  };
+  tick();
+  pollTimer = setInterval(tick, 1000);
+}
+
+window.addEventListener("resize", scheduleDraw);
+
+// ---- 多 agent 展示层(V2.5.0):切换条 / 分组卡片 / 对比视图 / 会话切换器 ----
+// 仅当启用 ≥2 个数据源时显示;单源时整块 hidden,页面与 V2.4.0 完全一致。
+// 纯原生 JS:焦点记忆在 localStorage,会话聚焦走 REST 一次性快照,不新增任何轮询。
+const AGENT_PALETTE = ["--green", "--accent", "--orange", "#b48cff", "#4dd7fa"];
+const AGENT_LABELS = { zcode: "ZCode", "claude-code": "Claude Code", codex: "Codex", opencode: "OpenCode", cline: "Cline" };
+// 口径图例:zcode 的纯生成耗时为实测,第三方源为估算(口径对照见 README「多 agent 支持」)
+const AGENT_CALIBER = { zcode: "实测口径" };
+const agentsState = {
+  data: null,       // /api/agents 或 agents 事件载荷:{ enabled, agents }
+  focus: "all",     // 切换条聚焦(localStorage 记忆;"all" = 全部)
+  perProvider: {},  // token 事件里的每源 latest/session(不含历史,增量走 history-append)
+  series: {},       // 每源 tokPerSec 序列(旧→新),快照播种 + 带 provider 的增量推进
+  fixedView: {},    // 会话聚焦时该源的静态视图(REST 快照)
+  sessFocus: {},    // 每源聚焦的会话 id(localStorage 记忆;空 = 跟随各源当前会话)
+};
+try { agentsState.sessFocus = JSON.parse(localStorage.getItem("tps.sessFocus") || "{}") || {}; } catch {}
+try {
+  const saved = localStorage.getItem("tps.focusAgent");
+  if (saved) agentsState.focus = saved;
+} catch {}
+
+const multiSource = () => Array.isArray(agentsState.data && agentsState.data.enabled) && agentsState.data.enabled.length > 1;
+const agentLabel = (id) => {
+  const a = agentsState.data && agentsState.data.agents;
+  const hit = Array.isArray(a) ? a.find((x) => x.provider === id) : null;
+  return (hit && hit.label) || AGENT_LABELS[id] || id;
+};
+const agentColor = (id) => {
+  const ids = (agentsState.data && agentsState.data.enabled) || [];
+  const idx = Math.max(0, ids.indexOf(id));
+  const raw = AGENT_PALETTE[idx % AGENT_PALETTE.length];
+  return raw.indexOf("--") === 0 ? (cssVar(raw) || "#4da3ff") : raw;
+};
+
+function applyAgents(d) {
+  agentsState.data = d || null;
+  const multi = multiSource();
+  $("agentBar").hidden = !multi;
+  $("agentsSection").hidden = !multi;
+  // 焦点指向的源被移除时回落「全部」
+  if (multi && agentsState.focus !== "all" && !agentsState.data.enabled.includes(agentsState.focus)) {
+    agentsState.focus = "all";
+    try { localStorage.setItem("tps.focusAgent", "all"); } catch {}
+  }
+  setText("footSrc", multi
+    ? "SSE 实时推送 · 数据源:" + agentsState.data.enabled.length + " 个客户端本地数据(全本地只读) · 生成耗时口径各异,横向对比仅供参考"
+    : "SSE 实时推送 · 数据源:ZCode usage 数据库(真实) · 仅统计当前会话主对话请求");
+  if (multi) { renderAgentBar(); renderAgentCards(); drawComparison(); }
+}
+
+async function refreshAgents() {
+  try {
+    const res = await fetch("/api/agents", { cache: "no-store" });
+    if (res.ok) applyAgents(await res.json());
+  } catch {}
+}
+
+function renderAgentBar() {
+  const bar = $("agentBar");
+  const d = agentsState.data;
+  if (!multiSource()) { bar.hidden = true; bar.textContent = ""; return; }
+  bar.hidden = false;
+  bar.textContent = "";
+  const chips = [{ id: "all", label: "全部" }].concat(
+    d.enabled.map((id) => ({ id, label: agentLabel(id) }))
+  );
+  for (const c of chips) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "chip" + (agentsState.focus === c.id ? " on" : "");
+    if (c.id !== "all") {
+      const dot = document.createElement("i");
+      dot.style.background = agentColor(c.id);
+      b.appendChild(dot);
+    }
+    b.appendChild(document.createTextNode(c.label));
+    b.addEventListener("click", () => setFocus(c.id));
+    bar.appendChild(b);
+  }
+}
+
+function setFocus(id) {
+  agentsState.focus = id;
+  try { localStorage.setItem("tps.focusAgent", id); } catch {}
+  renderAgentBar();
+  renderAgentCards();
+  drawComparison();
+}
+
+function applyPerProvider(pp) {
+  agentsState.perProvider = pp || {};
+  if (multiSource()) { renderAgentCards(); drawComparison(); }
+}
+
+// 快照(连接/重连)播种:每源序列以服务端历史为起点,之后只吃增量
+function seedPerSeries(pp) {
+  agentsState.perProvider = pp || {};
+  agentsState.series = {};
+  for (const [id, v] of Object.entries(agentsState.perProvider)) {
+    const hist = v && Array.isArray(v.history) ? v.history : [];
+    const pts = hist.slice().reverse().map((h) => (h && h.tokPerSec != null ? h.tokPerSec : null));
+    while (histWindow > 0 && pts.length > histWindow) pts.shift();
+    agentsState.series[id] = pts;
+  }
+  if (multiSource()) { renderAgentCards(); drawComparison(); }
+}
+
+function pushPerSample(providerId, tokPerSec) {
+  const arr = agentsState.series[providerId] || (agentsState.series[providerId] = []);
+  arr.push(tokPerSec);
+  while (histWindow > 0 && arr.length > histWindow) arr.shift();
+}
+
+function renderAgentCards() {
+  const wrap = $("agentCards");
+  const d = agentsState.data;
+  if (!multiSource()) { wrap.textContent = ""; return; }
+  wrap.textContent = "";
+  for (const a of d.agents || []) {
+    if (!d.enabled.includes(a.provider)) continue;
+    const pv = agentsState.perProvider[a.provider] || {};
+    const card = document.createElement("div");
+    card.className = "agentCard";
+    if (agentsState.focus === a.provider) card.style.borderColor = agentColor(a.provider);
+    const head = document.createElement("div");
+    head.className = "head";
+    const dot = document.createElement("i");
+    dot.style.background = agentColor(a.provider);
+    head.appendChild(dot);
+    head.appendChild(document.createTextNode(agentLabel(a.provider)));
+    const fmt = document.createElement("span");
+    fmt.className = "fmt";
+    fmt.textContent = a.ok ? (a.format || "") : "无数据";
+    head.appendChild(fmt);
+    card.appendChild(head);
+    // 速率与口径降级:能力缺失字段显示「—」(第三方源无 TTFT),绝不编数字
+    const rate = document.createElement("div");
+    rate.className = "rate";
+    const rv = pv.latest && pv.latest.tokPerSec != null ? pv.latest.tokPerSec : null;
+    rate.appendChild(document.createTextNode(rv == null ? "—" : rv.toFixed(1)));
+    const unit = document.createElement("span");
+    unit.className = "u";
+    unit.textContent = "tok/s";
+    rate.appendChild(unit);
+    card.appendChild(rate);
+    const stats = document.createElement("div");
+    stats.className = "stats";
+    const ttftOk = a.capabilities && a.capabilities.ttft;
+    const ttftV = !ttftOk || !pv.latest || pv.latest.ttftMs == null
+      ? "—"
+      : (pv.latest.ttftMs / 1000).toFixed(1) + "s";
+    const mk = (label, val) => {
+      const s = document.createElement("span");
+      s.appendChild(document.createTextNode(label + " "));
+      const b = document.createElement("b");
+      b.textContent = val;
+      s.appendChild(b);
+      return s;
+    };
+    stats.appendChild(mk("首字", ttftV));
+    stats.appendChild(mk("输出", fmtNum((pv.latest && pv.latest.outputTokens) || 0)));
+    stats.appendChild(mk("请求", (pv.session && pv.session.requests) || 0));
+    card.appendChild(stats);
+    // 会话切换器:同源多会话时单选聚焦(记忆在 localStorage);「当前」= 跟随各源自己的当前会话
+    const list = Array.isArray(a.sessionList) ? a.sessionList : [];
+    if (list.length > 1) {
+      const lab = document.createElement("div");
+      lab.className = "sess-label";
+      lab.textContent = "会话切换(当前 " + String(a.sessionId || "").slice(0, 8) + "…)";
+      card.appendChild(lab);
+      const sel = document.createElement("select");
+      const opt0 = document.createElement("option");
+      opt0.value = "";
+      opt0.textContent = "● 跟随当前会话";
+      sel.appendChild(opt0);
+      for (const s of list) {
+        const o = document.createElement("option");
+        o.value = s.sessionId || "";
+        o.textContent = "会话 " + String(s.sessionId || "").slice(0, 8) + "… · " + (s.samples == null ? "?" : s.samples) + " 条";
+        sel.appendChild(o);
+      }
+      const focused = agentsState.sessFocus[a.provider] || "";
+      sel.value = list.some((s) => s.sessionId === focused) ? focused : "";
+      sel.addEventListener("change", () => onSessionFocus(a.provider, sel.value));
+      card.appendChild(sel);
+    }
+    wrap.appendChild(card);
+  }
+}
+
+// 会话聚焦:该源卡片与对比曲线改用 REST 静态快照(不新增轮询);
+// 选回「跟随当前会话」即回到 SSE 实时数据。
+async function onSessionFocus(providerId, sessionId) {
+  if (sessionId) agentsState.sessFocus[providerId] = sessionId;
+  else delete agentsState.sessFocus[providerId];
+  try { localStorage.setItem("tps.sessFocus", JSON.stringify(agentsState.sessFocus)); } catch {}
+  renderAgentCards();
+  if (!sessionId) {
+    delete agentsState.fixedView[providerId];
+    drawComparison();
+    return;
+  }
+  try {
+    const res = await fetch("/api/token-rate?agent=" + encodeURIComponent(providerId) +
+      "&session=" + encodeURIComponent(sessionId), { cache: "no-store" });
+    if (!res.ok) return;
+    const v = await res.json();
+    agentsState.fixedView[providerId] = {
+      provider: providerId,
+      sessionId: v.sessionId,
+      latest: v.latest,
+      session: v.session,
+      history: Array.isArray(v.history) ? v.history : [],
+    };
+    drawComparison();
+  } catch {}
+}
+
+// 对比视图:多源同轴多 series(复用 drawLine),图例标注口径差异,聚焦源外全部淡化
+function drawComparison() {
+  const legend = $("cmpLegend");
+  if (!multiSource()) { legend.textContent = ""; return; }
+  const ids = agentsState.data.enabled;
+  const series = [], colors = [], dims = [], labels = [];
+  for (const id of ids) {
+    const view = agentsState.sessFocus[id] && agentsState.fixedView[id]
+      ? agentsState.fixedView[id]
+      : { history: (agentsState.series[id] || []).slice().reverse().map((tokPerSec) => ({ tokPerSec })) };
+    const hist = Array.isArray(view.history) ? view.history : [];
+    series.push(hist.map((h) => (h && h.tokPerSec != null ? h.tokPerSec : null)));
+    colors.push(agentColor(id));
+    dims.push(agentsState.focus !== "all" && agentsState.focus !== id);
+    labels.push({ label: agentLabel(id), caliber: AGENT_CALIBER[id] || "估算口径" });
+  }
+  legend.textContent = "";
+  labels.forEach((l, i) => {
+    const span = document.createElement("span");
+    const dot = document.createElement("i");
+    dot.style.background = colors[i];
+    span.appendChild(dot);
+    span.appendChild(document.createTextNode(l.label + " · " + l.caliber));
+    legend.appendChild(span);
+  });
+  drawLine($("cmpChart"), series, colors, { dim: dims });
+}
+
+// ---- 外观设置抽屉 ----
+const DEFAULTS = (window.__TPS_CONFIG__ && window.__TPS_CONFIG__.defaults) || {
+  theme: "dark",
+  fontFamily: "Segoe UI, Microsoft YaHei, system-ui, sans-serif",
+  monoFont: "Cascadia Mono, Consolas, monospace",
+  fontSize: 16,
+  fontScale: 1,
+  accentColor: "#4da3ff",
+  glassIntensity: 0.6,
+  fontUrl: "",
+};
+
+function fillDrawer(a) {
+  a = a || DEFAULTS;
+  $("set-theme").value = a.theme || "dark";
+  $("set-font").value = a.fontFamily || "";
+  $("set-mono").value = a.monoFont || "";
+  $("set-size").value = a.fontSize; $("size-v").textContent = (a.fontSize || 16) + "px";
+  $("set-scale").value = a.fontScale; $("scale-v").textContent = Number(a.fontScale || 1).toFixed(2) + "×";
+  $("set-accent").value = /^#[0-9a-f]{6}$/i.test(a.accentColor || "") ? a.accentColor : "#4da3ff";
+  $("set-accent-text").value = a.accentColor || "";
+  $("set-glass").value = a.glassIntensity; $("glass-v").textContent = Number(a.glassIntensity).toFixed(2);
+  $("set-fonturl").value = a.fontUrl || "";
+}
+
+function showMsg(text, isErr) {
+  const el = $("setMsg");
+  el.textContent = text || "";
+  el.classList.toggle("err", !!isErr);
+}
+
+$("gearBtn").addEventListener("click", async () => {
+  $("drawer").classList.add("open");
+  fillDrawer(currentAppearance);
+  // 打开时拉一次最新配置,保证与其他端写入一致
+  try {
+    const res = await fetch("/api/config", { cache: "no-store" });
+    if (res.ok) {
+      const c = await res.json();
+      if (c.appearance) { currentAppearance = c.appearance; fillDrawer(c.appearance); }
+    }
+  } catch {}
+});
+
+// ---- 桌面端(Electron)专属:窗口置顶 / 悬浮条开关 ----
+// 浏览器里 window.tpsDesktop 不存在(preload 未注入),这段整体跳过,
+// 按钮也因 html.tps-electron 类缺失而不可见——浏览器大屏行为与 V2.2.0 一致。
+if (window.tpsDesktop) {
+  const pin = $("pinBtn");
+  const ov = $("ovBtn");
+  const syncPin = (on) => pin.classList.toggle("on", !!on);
+  const syncOv = (on) => ov.classList.toggle("on", !!on);
+  window.tpsDesktop.getAlwaysOnTop().then(syncPin).catch(() => {});
+  window.tpsDesktop.onAlwaysOnTopChanged(syncPin);
+  pin.addEventListener("click", () => window.tpsDesktop.toggleAlwaysOnTop().catch(() => {}));
+  // 悬浮条可见性由主进程广播(托盘菜单也能切),按钮状态跟着事件走,不做本地猜测
+  window.tpsDesktop.onOverlayVisibleChanged(syncOv);
+  ov.addEventListener("click", () => window.tpsDesktop.toggleOverlay().catch(() => {}));
+}
+$("set-close").addEventListener("click", () => $("drawer").classList.remove("open"));
+$("set-reset").addEventListener("click", () => fillDrawer(DEFAULTS));
+
+for (const [rangeId, valId, fmt] of [
+  ["set-size", "size-v", (v) => v + "px"],
+  ["set-scale", "scale-v", (v) => Number(v).toFixed(2) + "×"],
+  ["set-glass", "glass-v", (v) => Number(v).toFixed(2)],
+]) {
+  $(rangeId).addEventListener("input", () => { $(valId).textContent = fmt($(rangeId).value); });
+}
+$("set-accent").addEventListener("input", () => { $("set-accent-text").value = $("set-accent").value; });
+
+$("set-save").addEventListener("click", async () => {
+  const patch = {
+    theme: $("set-theme").value,
+    // 字体类字段留空表示"用默认值"(placeholder 即默认),与 reset 语义一致
+    fontFamily: $("set-font").value.trim() || DEFAULTS.fontFamily,
+    monoFont: $("set-mono").value.trim() || DEFAULTS.monoFont,
+    fontSize: Number($("set-size").value),
+    fontScale: Number($("set-scale").value),
+    accentColor: $("set-accent-text").value.trim() || $("set-accent").value,
+    glassIntensity: Number($("set-glass").value),
+    fontUrl: $("set-fonturl").value.trim(),
+  };
+  try {
+    const res = await fetch("/api/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ appearance: patch }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      const detail = (data.fieldErrors || []).map((e) => e.field + ": " + e.message).join("; ");
+      showMsg(detail || data.error || "保存失败", true);
+      return;
+    }
+    currentAppearance = data.appearance;
+    applyAppearance(data.appearance);
+    fillDrawer(data.appearance);
+    showMsg("已保存并即时生效");
+  } catch (err) {
+    showMsg("保存失败: " + err.message, true);
+  }
+});
+
+clock();
+setInterval(clock, 1000);
+connectStream();
+refreshAgents(); // V2.5.0:拉取数据源清单(单源时切换条保持隐藏,与 V2.4.0 一致)
+</script>
+</body>
+</html>

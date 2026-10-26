@@ -1,0 +1,37 @@
+{
+	"name": "step-orchestra",
+	"version": "2.0.0",
+	"private": true,
+	"license": "AGPL-3.0-only",
+	"description": "Step Code 子代理编排可视化面板：液态玻璃界面、GUI 对话、API 配置切换与 Token 用量监控",
+	"type": "module",
+	"engines": {
+		"node": ">=22"
+	},
+	"scripts": {
+		"start": "node start.mjs",
+		"demo": "node start.mjs --demo",
+		"build": "node start.mjs --build-only",
+		"test": "node tools/run-all-tests.mjs"
+	},
+	"pi": {
+		"extensions": [
+			"extensions/index.ts"
+		]
+	},
+	"files": [
+		"extensions",
+		"web",
+		"bin",
+		"start.mjs",
+		"README.md"
+	],
+	"keywords": [
+		"stepcode",
+		"step-code",
+		"plugin",
+		"extension",
+		"orchestration",
+		"subagent"
+	]
+}

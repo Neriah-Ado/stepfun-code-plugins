@@ -1,0 +1,7 @@
+# Normalise line endings so the tree is identical on every platform.
+* text=auto eol=lf
+
+# Binary assets
+*.exe binary
+*.png binary
+*.wasm binary

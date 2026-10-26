@@ -1,0 +1,13 @@
+# Build output — shipped separately, rebuilt with `go build` (see README).
+bin/
+*.exe
+*.test
+
+# Harness scratch
+.mock-home/
+run.log
+*.tmp
+
+# Tooling
+node_modules/
+.edge-profile/

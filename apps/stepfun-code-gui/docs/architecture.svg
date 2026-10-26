@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 668" width="100%" role="img" aria-labelledby="archTitle archDesc">
+	<title id="archTitle">StepFun Code-GUI 架构</title>
+	<desc id="archDesc">四层数据流：Step Code 运行时产生宿主事件，经 TypeScript 扩展规范化为 JSONL，由 Go 网关重建拓扑并通过 SSE 推送至浏览器面板；浏览器可经反向通道回传发送消息与应用凭据指令。</desc>
+
+	<defs>
+		<marker id="arrowDown" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+			<path d="M1 1 L9 5 L1 9 Z" fill="#64748b"></path>
+		</marker>
+		<marker id="arrowUp" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+			<path d="M9 1 L1 5 L9 9 Z" fill="#b45309"></path>
+		</marker>
+	</defs>
+
+	<!-- canvas -->
+	<rect x="8" y="8" width="984" height="652" rx="18" fill="#ffffff" stroke="#e2e8f0" stroke-width="2"></rect>
+
+	<!-- 1. runtime -->
+	<rect x="56" y="44" width="664" height="98" rx="14" fill="#f1f5f9" stroke="#94a3b8" stroke-width="2"></rect>
+	<rect x="56" y="44" width="6" height="98" rx="3" fill="#64748b"></rect>
+	<text x="88" y="80" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="600" fill="#0f172a">① Step Code 运行时</text>
+	<text x="88" y="108" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="13" fill="#475569">pi-tui 差分渲染 · agent 循环 · 内置工具 · 子代理调度</text>
+	<text x="692" y="102" text-anchor="end" font-family="Consolas, monospace" font-size="12" fill="#94a3b8">process A</text>
+
+	<!-- edge: runtime -> extension -->
+	<line x1="388" y1="142" x2="388" y2="192" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrowDown)"></line>
+	<text x="404" y="172" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5" font-weight="500" fill="#334155">宿主事件 pi.on(...)</text>
+
+	<!-- 2. extension -->
+	<rect x="56" y="200" width="664" height="98" rx="14" fill="#ccfbf1" stroke="#0d9488" stroke-width="2"></rect>
+	<rect x="56" y="200" width="6" height="98" rx="3" fill="#0f766e"></rect>
+	<text x="88" y="236" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="600" fill="#0f172a">② TypeScript 扩展</text>
+	<text x="88" y="264" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="13" fill="#475569">事件规范化 · 脱敏截断 · 不含业务逻辑</text>
+	<text x="692" y="258" text-anchor="end" font-family="Consolas, monospace" font-size="12" fill="#0f766e">process B</text>
+
+	<!-- edge: extension -> gateway -->
+	<line x1="388" y1="298" x2="388" y2="348" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrowDown)"></line>
+	<text x="404" y="328" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5" font-weight="500" fill="#334155">stdin · JSONL</text>
+
+	<!-- 3. gateway -->
+	<rect x="56" y="356" width="664" height="98" rx="14" fill="#dbeafe" stroke="#2563eb" stroke-width="2"></rect>
+	<rect x="56" y="356" width="6" height="98" rx="3" fill="#1d4ed8"></rect>
+	<text x="88" y="392" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="600" fill="#0f172a">③ Go 网关</text>
+	<text x="88" y="420" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="13" fill="#475569">拓扑重建 · 状态维护 · SSE 广播 · 凭据存储（标准库，零第三方依赖）</text>
+	<text x="692" y="414" text-anchor="end" font-family="Consolas, monospace" font-size="12" fill="#1d4ed8">process C</text>
+
+	<!-- edge: gateway -> panel -->
+	<line x1="388" y1="454" x2="388" y2="504" stroke="#64748b" stroke-width="2.5" marker-end="url(#arrowDown)"></line>
+	<text x="404" y="484" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5" font-weight="500" fill="#334155">127.0.0.1 · HTTP / SSE</text>
+
+	<!-- 4. panel -->
+	<rect x="56" y="512" width="664" height="98" rx="14" fill="#ede9fe" stroke="#7c3aed" stroke-width="2"></rect>
+	<rect x="56" y="512" width="6" height="98" rx="3" fill="#6d28d9"></rect>
+	<text x="88" y="548" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="18" font-weight="600" fill="#0f172a">④ 浏览器面板</text>
+	<text x="88" y="576" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="13" fill="#475569">液态玻璃界面 · 编排树 · 对话 · API 配置 · Token 用量</text>
+	<text x="692" y="570" text-anchor="end" font-family="Consolas, monospace" font-size="12" fill="#6d28d9">process D</text>
+
+	<!-- reverse channel -->
+	<path d="M760 561 H896 V93 H732" fill="none" stroke="#b45309" stroke-width="2.5" stroke-linejoin="round" marker-end="url(#arrowUp)"></path>
+
+	<rect x="778" y="296" width="150" height="62" rx="10" fill="#fef3c7" stroke="#d97706" stroke-width="1.5"></rect>
+	<text x="853" y="320" text-anchor="middle" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="12.5" font-weight="600" fill="#78350f">反向通道</text>
+	<text x="853" y="340" text-anchor="middle" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="11" fill="#92400e">stdout 单行 JSON</text>
+
+	<text x="896" y="470" text-anchor="middle" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="11" fill="#92400e">发送消息</text>
+	<text x="896" y="488" text-anchor="middle" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="11" fill="#92400e">应用凭据</text>
+
+	<text x="56" y="640" font-family="Segoe UI, PingFang SC, Microsoft YaHei, sans-serif" font-size="12" fill="#94a3b8">唯一反向通道承担下行指令；其余数据流均为单向。</text>
+</svg>

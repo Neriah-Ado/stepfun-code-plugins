@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<title>编排台 · Step Code</title>
+<link rel="stylesheet" href="liquid-glass.css">
+</head>
+<body>
+
+<div class="aurora" aria-hidden="true">
+	<span class="blob blob-a"></span>
+	<span class="blob blob-b"></span>
+	<span class="blob blob-c"></span>
+</div>
+
+<svg class="svg-defs" aria-hidden="true" focusable="false">
+	<defs>
+		<filter id="lg-refract" x="-12%" y="-12%" width="124%" height="124%" color-interpolation-filters="sRGB">
+			<feTurbulence type="fractalNoise" baseFrequency="0.007 0.012" numOctaves="2" seed="11" result="noise"></feTurbulence>
+			<feGaussianBlur in="noise" stdDeviation="1.4" result="soft"></feGaussianBlur>
+			<feDisplacementMap in="SourceGraphic" in2="soft" scale="6" xChannelSelector="R" yChannelSelector="G"></feDisplacementMap>
+		</filter>
+	</defs>
+</svg>
+
+<header class="topbar glass" id="topbar">
+	<div class="brand">
+		<span class="mark" aria-hidden="true">
+			<svg viewBox="0 0 24 24" width="18" height="18">
+				<circle cx="12" cy="5" r="2.4"></circle>
+				<circle cx="5.5" cy="18" r="2.4"></circle>
+				<circle cx="18.5" cy="18" r="2.4"></circle>
+				<path d="M12 7.4 6.4 15.6M12 7.4l5.6 8.2M7.9 18h8.2" fill="none"></path>
+			</svg>
+		</span>
+		<div class="brand-text">
+			<strong>编排台</strong>
+			<span class="brand-sub">Step Code Orchestration</span>
+		</div>
+	</div>
+
+	<div class="metrics" id="metrics">
+		<div class="metric">
+			<span class="metric-label">运行中</span>
+			<span class="metric-value tone-running" id="m-running">0</span>
+		</div>
+		<div class="metric">
+			<span class="metric-label">已完成</span>
+			<span class="metric-value tone-done" id="m-completed">0</span>
+		</div>
+		<div class="metric">
+			<span class="metric-label">失败</span>
+			<span class="metric-value tone-failed" id="m-failed">0</span>
+		</div>
+		<div class="metric">
+			<span class="metric-label">编排</span>
+			<span class="metric-value" id="m-orchestrations">0</span>
+		</div>
+		<div class="metric">
+			<span class="metric-label">Token</span>
+			<span class="metric-value" id="m-tokens">0</span>
+		</div>
+	</div>
+
+	<button class="account-picker" id="account-picker" type="button" aria-haspopup="dialog" aria-expanded="false">
+		<span class="account-dot" id="account-dot" data-state="missing" aria-hidden="true"></span>
+		<span class="account-text">
+			<span class="account-name" id="account-name">未配置账户</span>
+			<span class="account-key" id="account-key">—</span>
+		</span>
+		<span class="account-caret" aria-hidden="true">
+			<svg viewBox="0 0 24 24" width="12" height="12">
+				<path d="M6 9.5l6 6 6-6" fill="none"></path>
+			</svg>
+		</span>
+	</button>
+
+	<button class="perf-toggle" id="perf-toggle" type="button" aria-pressed="false" data-state="full">
+		<span class="perf-icon" aria-hidden="true">
+			<svg viewBox="0 0 24 24" width="13" height="13">
+				<path d="M13 3 5.5 13.5h5L11 21l7.5-10.5h-5z" fill="none"></path>
+			</svg>
+		</span>
+		<span id="perf-toggle-label">性能</span>
+	</button>
+
+	<button class="mode-switch" id="mode-switch" type="button" data-target="chat" aria-label="切换到对话模式">
+		<span class="mode-icon mode-icon-chat" aria-hidden="true">
+			<svg viewBox="0 0 24 24" width="15" height="15">
+				<path d="M4.5 5.5h15v10.5H9.5l-5 3.8z" fill="none"></path>
+			</svg>
+		</span>
+		<span class="mode-icon mode-icon-orchestration" aria-hidden="true">
+			<svg viewBox="0 0 24 24" width="15" height="15">
+				<circle cx="12" cy="5.5" r="2.2"></circle>
+				<circle cx="5.5" cy="18" r="2.2"></circle>
+				<circle cx="18.5" cy="18" r="2.2"></circle>
+				<path d="M12 7.7 6.6 15.9M12 7.7l5.4 8.2" fill="none"></path>
+			</svg>
+		</span>
+		<span class="mode-switch-label" id="mode-switch-label">对话</span>
+	</button>
+
+	<div class="session-strip">
+		<span class="session-model" id="s-model">未连接模型</span>
+		<span class="session-cwd" id="s-cwd" title="">—</span>
+		<span class="live" id="live" data-state="connecting">
+			<span class="live-dot" aria-hidden="true"></span>
+			<span class="live-text" id="live-text">连接中</span>
+		</span>
+	</div>
+
+	<div class="account-popover glass" id="account-popover" role="dialog" aria-label="API 配置" hidden>
+		<div class="popover-head">
+			<h2 class="popover-title">API 配置</h2>
+			<button class="ghost-btn" id="account-new" type="button">新增</button>
+		</div>
+
+		<p class="popover-error" id="account-error" hidden></p>
+
+		<div class="profile-list" id="profile-list"></div>
+
+		<p class="popover-hint" id="account-hint">
+			密钥以明文保存在 <code>~/.stepcode/agent/step-orchestra/profiles.json</code>，目录/文件权限 0700/0600；
+			Windows 上权限位不生效，由目录 ACL 兜底。只在本机读取。
+		</p>
+
+		<form class="profile-form" id="profile-form" hidden>
+			<label class="field">
+				<span class="field-label">名称</span>
+				<input class="field-input" id="pf-name" type="text" placeholder="例如：个人 Plan" required>
+			</label>
+			<label class="field">
+				<span class="field-label">Provider</span>
+				<input class="field-input" id="pf-provider" type="text" placeholder="step" required>
+			</label>
+			<label class="field">
+				<span class="field-label">API 密钥</span>
+				<input class="field-input" id="pf-key" type="password" placeholder="sk-..." autocomplete="off" spellcheck="false">
+			</label>
+			<label class="field">
+				<span class="field-label">Base URL（可选）</span>
+				<input class="field-input" id="pf-baseurl" type="text" placeholder="留空则沿用现有端点">
+			</label>
+			<div class="form-actions">
+				<button class="ghost-btn" id="pf-cancel" type="button">取消</button>
+				<button class="composer-send" id="pf-save" type="submit">保存</button>
+			</div>
+		</form>
+	</div>
+</header>
+
+<main class="stage">
+	<section class="panel glass" id="panel-main" aria-label="主视图">
+		<div class="view-stack">
+			<div class="view" id="view-orchestration" data-active="true">
+		<div class="panel-head">
+			<h1 class="panel-title">编排树</h1>
+			<div class="run-state" id="run-state" data-state="idle">
+				<span class="run-pip" aria-hidden="true"></span>
+				<span id="run-state-text">空闲</span>
+			</div>
+			<div class="panel-tools">
+				<label class="toggle">
+					<input type="checkbox" id="filter-orchestration-only">
+					<span class="toggle-track" aria-hidden="true"><span class="toggle-knob"></span></span>
+					<span class="toggle-label">仅编排</span>
+				</label>
+				<button class="ghost-btn" id="btn-collapse" type="button">折叠已完成</button>
+			</div>
+		</div>
+
+		<div class="tree" id="tree" role="tree"></div>
+
+		<div class="empty" id="empty">
+			<div class="empty-art" aria-hidden="true">
+				<span class="empty-ring"></span>
+				<span class="empty-ring"></span>
+				<span class="empty-ring"></span>
+			</div>
+			<strong class="empty-title">等待编排活动</strong>
+			<p class="empty-hint">在 Step Code 中触发一次 <code>subagent</code> 调用，节点会实时出现在这里。</p>
+		</div>
+			</div>
+
+			<div class="view" id="view-chat" data-active="false">
+				<div class="panel-head">
+					<h1 class="panel-title">对话</h1>
+					<div class="run-state" id="chat-run-state" data-state="idle">
+						<span class="run-pip" aria-hidden="true"></span>
+						<span id="chat-run-text">空闲</span>
+					</div>
+					<div class="panel-tools">
+						<button class="ghost-btn" id="btn-chat-bottom" type="button" disabled>回到底部</button>
+					</div>
+				</div>
+
+				<div class="chat-log" id="chat-log" role="log" aria-live="polite"></div>
+
+				<div class="empty chat-empty" id="chat-empty">
+					<strong class="empty-title">尚无对话</strong>
+					<p class="empty-hint">在下方输入框发送一条消息，即可在这里与 Step Code 对话。</p>
+				</div>
+
+				<div class="usage-bar" id="usage-bar" data-level="ok">
+					<span class="usage-text" id="usage-text">等待首轮回复</span>
+					<span class="usage-clock" id="usage-clock">--:--:--</span>
+				</div>
+
+				<form class="composer" id="composer" autocomplete="off">
+					<textarea
+						id="composer-input"
+						class="composer-input"
+						rows="1"
+						placeholder="输入消息，Enter 发送，Shift+Enter 换行"
+						aria-label="消息输入框"></textarea>
+					<button class="composer-send" id="composer-send" type="submit" disabled>
+						<span class="composer-send-label">发送</span>
+					</button>
+				</form>
+			</div>
+		</div>
+	</section>
+
+	<aside class="panel glass" id="panel-inspector" aria-label="节点详情">
+		<div class="panel-head">
+			<h1 class="panel-title">节点详情</h1>
+		</div>
+		<div class="inspector" id="inspector">
+			<p class="inspector-hint">选择左侧任一节点查看参数、子代理明细与耗时。</p>
+		</div>
+	</aside>
+</main>
+
+<script src="perf.js"></script>
+<script src="glass.js"></script>
+<script src="tree.js"></script>
+<script src="chat.js"></script>
+<script src="token.js"></script>
+<script src="profiles.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

@@ -29,6 +29,19 @@
 | [step-cron-recipes](./plugins/step-cron-recipes) | ![v1.3.0](https://img.shields.io/badge/version-1.3.0-blue) | 定时任务模板库：6 模板 + 向导 + 变量系统 + 社区规范 | `/cron-recipe init` |
 | [step-marketplace-cc](./plugins/step-marketplace-cc) | ![v1.3.0](https://img.shields.io/badge/version-1.3.0-blue) | Claude Code 插件市场桥：兼容性检查/修补/收录目录 | 兼容性检查 · `catalog.json` |
 
+## 仓库结构（monorepo）
+
+本仓库除 `plugins/` 下的声明式插件外，还以 git subtree 形式收纳了独立应用与主题（历史完整保留，来源仓库已归档）：
+
+| 路径 | 来源仓库 | 说明 |
+| --- | --- | --- |
+| [plugins/](./plugins/) | — | 13 个声明式插件（`step.plugin.json` + `commands/` + `skills/`） |
+| [apps/stepfun-code-gui](./apps/stepfun-code-gui/) | `Neriah-Ado/stepfun-code-gui` | 子代理编排可视化面板（gateway + web，独立应用） |
+| [apps/stepfun-usage-monitor](./apps/stepfun-usage-monitor/) | `Neriah-Ado/stepfun-usage-monitor` | 会话级 Token 实时速率监控（Electron 大屏，独立应用） |
+| [themes/dsh-resident-theme](./themes/dsh-resident-theme/) | `Neriah-Ado/dsh-resident-theme` | DeepSeek Harness 红后主题插件（开屏动画/界面主题/品牌标识） |
+
+子目录应用保持各自的构建与发布流程；GitHub Actions 只识别根目录 `.github/workflows/`，需要 CI 时在根目录以 `paths:` 过滤触发对应子目录。
+
 ## 安装
 
 ```bash
